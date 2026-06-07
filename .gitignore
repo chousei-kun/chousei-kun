@@ -1,0 +1,12 @@
+node_modules/
+.data/
+server.log
+server.err.log
+outputs/
+work/
+*.zip
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
