@@ -63,6 +63,49 @@ function presentRoom(room, hostKey) {
   };
 }
 
+async function createCalendarEvent(room, body) {
+  const accessToken = String(body?.accessToken || "").trim();
+  const calendarId = String(body?.calendarId || "primary").trim() || "primary";
+  const organizerEmail = String(body?.organizerEmail || "").trim().toLowerCase();
+  const event = body?.event || {};
+
+  if (!accessToken) return json(400, { error: "accessToken is required" });
+
+  const attendees = [...new Set(
+    (room.participants || [])
+      .map((participant) => String(participant.email || "").trim().toLowerCase())
+      .filter((email) => email && email !== organizerEmail)
+  )].map((email) => ({ email }));
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({
+        summary: String(event.summary || "調整くん予定"),
+        description: String(event.description || ""),
+        attendees,
+        start: event.start || {},
+        end: event.end || {},
+        transparency: "opaque"
+      })
+    }
+  );
+
+  if (!response.ok) {
+    return json(response.status, { error: await response.text() });
+  }
+
+  return new Response(await response.text(), {
+    status: 200,
+    headers: jsonHeaders
+  });
+}
+
 export default async (request) => {
   const url = new URL(request.url);
   const roomId = url.searchParams.get("room");
@@ -82,6 +125,10 @@ export default async (request) => {
   }
 
   const body = await request.json().catch(() => null);
+  if (body?.action === "create_event") {
+    return createCalendarEvent(current, body);
+  }
+
   const participant = sanitizeParticipant(body?.participant);
   const googleClientId = sanitizeGoogleClientId(body?.googleClientId);
   if (!participant && !googleClientId) {

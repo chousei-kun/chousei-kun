@@ -99,6 +99,53 @@ async function readRequestBody(request) {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+function jsonHeaders() {
+  return { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
+}
+
+async function createCalendarEvent(room, body) {
+  const accessToken = String(body.accessToken || "").trim();
+  const calendarId = String(body.calendarId || "primary").trim() || "primary";
+  const organizerEmail = String(body.organizerEmail || "").trim().toLowerCase();
+  const event = body.event || {};
+
+  if (!accessToken) {
+    return { status: 400, body: { error: "accessToken is required" } };
+  }
+
+  const attendees = [...new Set(
+    (room.participants || [])
+      .map((participant) => String(participant.email || "").trim().toLowerCase())
+      .filter((email) => email && email !== organizerEmail)
+  )].map((email) => ({ email }));
+
+  const googleResponse = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json; charset=utf-8"
+      },
+      body: JSON.stringify({
+        summary: String(event.summary || "調整くん予定"),
+        description: String(event.description || ""),
+        attendees,
+        start: event.start || {},
+        end: event.end || {},
+        transparency: "opaque"
+      })
+    }
+  );
+
+  const responseText = await googleResponse.text();
+  if (!googleResponse.ok) {
+    return { status: googleResponse.status, body: { error: responseText } };
+  }
+
+  return { status: 200, body: JSON.parse(responseText) };
+}
+
 async function handleRoomApi(request, response) {
   const url = new URL(request.url, `http://localhost:${port}`);
   const roomId = sanitizeRoomId(url.searchParams.get("room"));
@@ -125,6 +172,13 @@ async function handleRoomApi(request, response) {
   }
 
   const body = JSON.parse(await readRequestBody(request) || "{}");
+  if (body.action === "create_event") {
+    const eventResponse = await createCalendarEvent(current, body);
+    response.writeHead(eventResponse.status, jsonHeaders());
+    response.end(JSON.stringify(eventResponse.body));
+    return;
+  }
+
   const participant = sanitizeParticipant(body.participant);
   const googleClientId = sanitizeGoogleClientId(body.googleClientId);
   if (!participant && !googleClientId) {
@@ -158,7 +212,7 @@ async function handleRoomApi(request, response) {
   };
   await writeRooms(rooms);
 
-  response.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+  response.writeHead(200, jsonHeaders());
   response.end(JSON.stringify(presentRoom(rooms[roomId], hostKey)));
 }
 

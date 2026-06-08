@@ -30,6 +30,10 @@ function handleRoomRequest_(e, method, payload) {
   }
 
   var body = payload || {};
+  if (body.action === "create_event") {
+    return handleCreateEvent_(current, body);
+  }
+
   var participant = sanitizeParticipant_(body.participant);
   var googleClientId = sanitizeGoogleClientId_(body.googleClientId);
   if (!participant && !googleClientId) {
@@ -150,5 +154,59 @@ function presentRoom_(room, hostKey) {
 function jsonOutput_(body) {
   return ContentService
     .createTextOutput(JSON.stringify(body))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function handleCreateEvent_(room, body) {
+  var accessToken = String(body.accessToken || "").trim();
+  var calendarId = String(body.calendarId || "primary").trim() || "primary";
+  var organizerEmail = String(body.organizerEmail || "").trim().toLowerCase();
+  var event = body.event || {};
+
+  if (!accessToken) {
+    return jsonOutput_({ error: "accessToken is required" });
+  }
+
+  var attendees = (room.participants || [])
+    .map(function (participant) {
+      return String(participant.email || "").trim().toLowerCase();
+    })
+    .filter(function (email, index, emails) {
+      return email && email !== organizerEmail && emails.indexOf(email) === index;
+    })
+    .map(function (email) {
+      return { email: email };
+    });
+
+  var payload = {
+    summary: String(event.summary || "調整くん予定"),
+    description: String(event.description || ""),
+    attendees: attendees,
+    start: event.start || {},
+    end: event.end || {},
+    transparency: "opaque"
+  };
+
+  var response = UrlFetchApp.fetch(
+    "https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(calendarId) + "/events?sendUpdates=all",
+    {
+      method: "post",
+      contentType: "application/json; charset=utf-8",
+      headers: {
+        Authorization: "Bearer " + accessToken
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    }
+  );
+
+  var status = response.getResponseCode();
+  var text = response.getContentText();
+  if (status < 200 || status >= 300) {
+    return jsonOutput_({ error: status + " " + text });
+  }
+
+  return ContentService
+    .createTextOutput(text)
     .setMimeType(ContentService.MimeType.JSON);
 }

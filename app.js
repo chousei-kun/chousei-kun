@@ -992,6 +992,50 @@ function targetCalendarId() {
   return selectedWritable?.id || "primary";
 }
 
+async function createSharedCalendarEvent({ calendarId, title, dateText, start, end }) {
+  const payload = {
+    action: "create_event",
+    accessToken: state.accessToken,
+    organizerEmail: state.currentGoogleUser?.email || "",
+    calendarId,
+    event: {
+      summary: title,
+      description: eventDescription(),
+      start: {
+        dateTime: localDateTime(dateText, start),
+        timeZone: "Asia/Tokyo"
+      },
+      end: {
+        dateTime: localDateTime(dateText, end),
+        timeZone: "Asia/Tokyo"
+      }
+    }
+  };
+
+  if (configuredRoomApiUrl || !prefersLocalRoomStore) {
+    const response = await roomRequest({
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    if (response?.error) {
+      throw new Error(response.error);
+    }
+    return response;
+  }
+
+  return googleRequest(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        ...payload.event,
+        attendees: eventAttendees(),
+        transparency: "opaque"
+      })
+    }
+  );
+}
+
 async function createCalendarEventFromCandidate(button) {
   if (!state.accessToken || !state.currentGoogleUser) {
     setImportStatus("予定作成には Google 接続が必要です", "error");
@@ -1009,26 +1053,13 @@ async function createCalendarEventFromCandidate(button) {
   button.querySelector("span:last-child").textContent = "作成中";
 
   try {
-    const event = await googleRequest(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=all`,
-      {
-        method: "POST",
-        body: JSON.stringify({
-          summary: title,
-          description: eventDescription(),
-          attendees: eventAttendees(),
-          start: {
-            dateTime: localDateTime(dateText, start),
-            timeZone: "Asia/Tokyo"
-          },
-          end: {
-            dateTime: localDateTime(dateText, end),
-            timeZone: "Asia/Tokyo"
-          },
-          transparency: "opaque"
-        })
-      }
-    );
+    const event = await createSharedCalendarEvent({
+      calendarId,
+      title,
+      dateText,
+      start,
+      end
+    });
     setImportStatus(`予定を作成しました: ${event.htmlLink || title}`);
     button.querySelector("span:last-child").textContent = "作成済み";
     await importGoogleFreeBusy();
