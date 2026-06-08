@@ -54,6 +54,7 @@ const roomId = initialRoomId || crypto.randomUUID();
 const isInviteLink = pageParams.get("invite") === "1";
 const configuredGoogleClientId = window.SLOTWISE_CONFIG?.googleClientId || "";
 const configuredRoomStore = window.SLOTWISE_CONFIG?.roomStore || "";
+const configuredPreferredGoogleAccount = window.SLOTWISE_CONFIG?.preferredGoogleAccount || "";
 const prefersLocalRoomStore = configuredRoomStore === "local" || window.location.hostname.endsWith("github.io");
 const hostKeyStorageKey = `chousei-kun.hostKey.${roomId}`;
 const storedHostKey = localStorage.getItem(hostKeyStorageKey) || "";
@@ -90,6 +91,10 @@ document.querySelector("#inviteBanner").hidden = !isInviteLink;
 
 function currentGoogleClientId() {
   return configuredGoogleClientId || state.roomGoogleClientId || document.querySelector("#googleClientId").value.trim();
+}
+
+function currentPreferredGoogleAccount() {
+  return configuredPreferredGoogleAccount.trim().toLowerCase();
 }
 
 function buildShareUrl() {
@@ -988,6 +993,7 @@ function requestGoogleCalendarAccess() {
   const tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: GOOGLE_SCOPES,
+    login_hint: currentPreferredGoogleAccount() || undefined,
     prompt: "select_account consent",
     include_granted_scopes: true,
     callback: async (tokenResponse) => {
@@ -996,11 +1002,20 @@ function requestGoogleCalendarAccess() {
         return;
       }
 
-      try {
-        state.accessToken = tokenResponse.access_token;
-        state.currentGoogleUser = await fetchGoogleProfile();
-        const calendars = await fetchGoogleCalendars();
-        await importGoogleFreeBusy();
+        try {
+          state.accessToken = tokenResponse.access_token;
+          state.currentGoogleUser = await fetchGoogleProfile();
+          if (
+            currentPreferredGoogleAccount() &&
+            (state.currentGoogleUser?.email || "").toLowerCase() !== currentPreferredGoogleAccount()
+          ) {
+            state.accessToken = "";
+            state.currentGoogleUser = null;
+            setImportStatus(`このアプリは ${currentPreferredGoogleAccount()} で連携してください`, "error");
+            return;
+          }
+          const calendars = await fetchGoogleCalendars();
+          await importGoogleFreeBusy();
         setImportStatus(`${state.currentGoogleUser.name || state.currentGoogleUser.email} と ${calendars.length}件のカレンダーを接続しました`);
       } catch (error) {
         setImportStatus(`Google Calendar の読み込みに失敗しました: ${error.message}`, "error");
