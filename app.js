@@ -10,6 +10,7 @@ const state = {
   selectedCalendarIds: new Set(),
   currentGoogleUser: null,
   hostKey: "",
+  roomGoogleClientId: "",
   lastRoomSync: ""
 };
 
@@ -83,7 +84,7 @@ document.querySelector("#currentOrigin").textContent = window.location.origin;
 document.querySelector("#inviteBanner").hidden = !isInviteLink;
 
 function currentGoogleClientId() {
-  return configuredGoogleClientId || document.querySelector("#googleClientId").value.trim();
+  return configuredGoogleClientId || state.roomGoogleClientId || document.querySelector("#googleClientId").value.trim();
 }
 
 function buildShareUrl() {
@@ -510,6 +511,13 @@ async function roomRequest(options = {}) {
 async function loadRoomParticipants({ quiet = false } = {}) {
   try {
     const room = await roomRequest();
+    if (room.googleClientId && !configuredGoogleClientId) {
+      state.roomGoogleClientId = room.googleClientId;
+      document.querySelector("#googleClientId").value = room.googleClientId;
+      if (isInviteLink) {
+        document.querySelector("#clientIdField").hidden = true;
+      }
+    }
     (room.participants || []).forEach(upsertParticipant);
     if (room.updatedAt && room.updatedAt !== state.lastRoomSync) {
       state.lastRoomSync = room.updatedAt;
@@ -528,12 +536,42 @@ async function loadRoomParticipants({ quiet = false } = {}) {
 async function publishParticipantToRoom(participant) {
   const room = await roomRequest({
     method: "POST",
-    body: JSON.stringify({ participant })
+    body: JSON.stringify({
+      participant,
+      googleClientId: currentGoogleClientId()
+    })
   });
+  if (room.googleClientId && !configuredGoogleClientId) {
+    state.roomGoogleClientId = room.googleClientId;
+    document.querySelector("#googleClientId").value = room.googleClientId;
+  }
   state.lastRoomSync = room.updatedAt || "";
   (room.participants || []).forEach(upsertParticipant);
   updateAll();
   return room;
+}
+
+async function syncRoomGoogleClientId({ quiet = true } = {}) {
+  const googleClientId = currentGoogleClientId();
+  if (!googleClientId || !state.hostKey) return;
+
+  try {
+    const room = await roomRequest({
+      method: "POST",
+      body: JSON.stringify({ googleClientId })
+    });
+    state.roomGoogleClientId = room.googleClientId || googleClientId;
+    if (!configuredGoogleClientId) {
+      document.querySelector("#googleClientId").value = state.roomGoogleClientId;
+    }
+    if (!quiet) {
+      setImportStatus("Google OAuth Client ID を招待ルームへ保存しました");
+    }
+  } catch (error) {
+    if (!quiet) {
+      setImportStatus(`Google OAuth Client ID の保存に失敗しました: ${error.message}`, "error");
+    }
+  }
 }
 
 function setImportStatus(message, tone = "neutral") {
@@ -783,7 +821,7 @@ async function importGoogleFreeBusy() {
 function requestGoogleCalendarAccess() {
   const clientId = currentGoogleClientId();
   if (!clientId) {
-    setImportStatus("Google OAuth Client ID が未設定です。主催者が config.js を設定してください。", "error");
+    setImportStatus("Google OAuth Client ID がまだルームに登録されていません。主催者が先に Google 連携すると、そのまま参加できます。", "error");
     return;
   }
 
@@ -874,11 +912,16 @@ document.querySelectorAll(".segment").forEach((button) => {
 });
 
 document.querySelector("#googleClientId").addEventListener("input", refreshShareUrl);
+document.querySelector("#googleClientId").addEventListener("change", () => {
+  refreshShareUrl();
+  syncRoomGoogleClientId();
+});
 
 document.querySelector("#suggestButton").addEventListener("click", renderSuggestions);
 
 document.querySelector("#copyShareUrlButton").addEventListener("click", async () => {
   const shareUrl = document.querySelector("#shareUrl").value;
+  await syncRoomGoogleClientId();
   try {
     await navigator.clipboard.writeText(shareUrl);
     document.querySelector("#copyShareUrlButton span:last-child").textContent = "コピー済み";

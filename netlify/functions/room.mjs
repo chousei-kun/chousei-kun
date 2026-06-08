@@ -16,6 +16,12 @@ function roomKey(roomId) {
   return `room-${roomId.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80)}`;
 }
 
+function sanitizeGoogleClientId(clientId) {
+  const value = String(clientId || "").trim();
+  if (!value) return "";
+  return /^[a-zA-Z0-9-]+\.apps\.googleusercontent\.com$/.test(value) ? value.slice(0, 200) : "";
+}
+
 function sanitizeParticipant(participant) {
   if (!participant || typeof participant !== "object") return null;
   if (!participant.id || !participant.name || !participant.busy) return null;
@@ -49,6 +55,7 @@ function presentRoom(room, hostKey) {
   const canSeeEmails = viewerCanSeeEmails(room, hostKey);
   return {
     ...room,
+    googleClientId: room.googleClientId || "",
     participants: (room.participants || []).map((participant) => ({
       ...participant,
       email: canSeeEmails ? participant.email || "" : ""
@@ -76,20 +83,26 @@ export default async (request) => {
 
   const body = await request.json().catch(() => null);
   const participant = sanitizeParticipant(body?.participant);
-  if (!participant) return json(400, { error: "valid participant is required" });
+  const googleClientId = sanitizeGoogleClientId(body?.googleClientId);
+  if (!participant && !googleClientId) {
+    return json(400, { error: "valid participant or googleClientId is required" });
+  }
   if (current.hostKey && hostKey && current.hostKey !== hostKey) {
     return json(403, { error: "invalid host key" });
   }
 
   const participants = Array.isArray(current.participants) ? current.participants : [];
-  const nextParticipants = [
-    participant,
-    ...participants.filter((item) => item.id !== participant.id)
-  ].slice(0, 50);
+  const nextParticipants = participant
+    ? [
+        participant,
+        ...participants.filter((item) => item.id !== participant.id)
+      ].slice(0, 50)
+    : participants;
 
   const next = {
     roomId,
     hostKey: current.hostKey || hostKey || "",
+    googleClientId: current.googleClientId || googleClientId || "",
     participants: nextParticipants,
     updatedAt: new Date().toISOString()
   };

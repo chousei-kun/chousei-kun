@@ -46,6 +46,12 @@ function sanitizeRoomId(roomId) {
   return String(roomId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
 }
 
+function sanitizeGoogleClientId(clientId) {
+  const value = String(clientId || "").trim();
+  if (!value) return "";
+  return /^[a-zA-Z0-9-]+\.apps\.googleusercontent\.com$/.test(value) ? value.slice(0, 200) : "";
+}
+
 function sanitizeParticipant(participant) {
   if (!participant || typeof participant !== "object") return null;
   if (!participant.id || !participant.name || !participant.busy) return null;
@@ -79,6 +85,7 @@ function presentRoom(room, hostKey) {
   const canSeeEmails = viewerCanSeeEmails(room, hostKey);
   return {
     ...room,
+    googleClientId: room.googleClientId || "",
     participants: (room.participants || []).map((participant) => ({
       ...participant,
       email: canSeeEmails ? participant.email || "" : ""
@@ -119,9 +126,10 @@ async function handleRoomApi(request, response) {
 
   const body = JSON.parse(await readRequestBody(request) || "{}");
   const participant = sanitizeParticipant(body.participant);
-  if (!participant) {
+  const googleClientId = sanitizeGoogleClientId(body.googleClientId);
+  if (!participant && !googleClientId) {
     response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-    response.end(JSON.stringify({ error: "valid participant is required" }));
+    response.end(JSON.stringify({ error: "valid participant or googleClientId is required" }));
     return;
   }
 
@@ -131,13 +139,18 @@ async function handleRoomApi(request, response) {
     return;
   }
 
+  const nextParticipants = participant
+    ? [
+        participant,
+        ...(current.participants || []).filter((item) => item.id !== participant.id)
+      ].slice(0, 50)
+    : (current.participants || []);
+
   rooms[roomId] = {
     roomId,
     hostKey: current.hostKey || hostKey || "",
-    participants: [
-      participant,
-      ...(current.participants || []).filter((item) => item.id !== participant.id)
-    ].slice(0, 50),
+    googleClientId: current.googleClientId || googleClientId || "",
+    participants: nextParticipants,
     updatedAt: new Date().toISOString()
   };
   await writeRooms(rooms);
