@@ -176,6 +176,15 @@ function participantById(participantId) {
   return people.find((person) => person.id === participantId) || null;
 }
 
+function currentParticipantId() {
+  return state.currentGoogleUser ? participantIdForProfile(state.currentGoogleUser) : "";
+}
+
+function canEditParticipant(person) {
+  if (!isInviteLink) return true;
+  return person.id === currentParticipantId();
+}
+
 function sanitizeGoogleClientIdClient(clientId) {
   const value = String(clientId || "").trim();
   if (!value) return "";
@@ -490,8 +499,8 @@ function renderPeople() {
   }
 
   peopleList.innerHTML = people.map((person) => `
-    <article class="person-card">
-      <div class="person-head">
+      <article class="person-card">
+        <div class="person-head">
         <div class="avatar">${person.initials}</div>
         <div>
           <strong>${escapeHtml(person.name)}</strong>
@@ -500,16 +509,21 @@ function renderPeople() {
       </div>
       <label class="name-editor">
         <span>参加者名</span>
-        <input
-          class="name-input"
-          type="text"
-          maxlength="120"
-          data-participant-id="${escapeHtml(person.id)}"
-          data-saved-name="${escapeHtml(person.name)}"
-          value="${escapeHtml(person.name)}"
-        />
-      </label>
-      <p class="person-meta">表示名は自由に変更できます。Gmail アドレスは他の参加者には表示されません。</p>
+          <input
+            class="name-input"
+            type="text"
+            maxlength="120"
+            data-participant-id="${escapeHtml(person.id)}"
+            data-saved-name="${escapeHtml(person.name)}"
+            value="${escapeHtml(person.name)}"
+            ${canEditParticipant(person) ? "" : "disabled"}
+          />
+        </label>
+      <p class="person-meta">${
+        canEditParticipant(person)
+          ? "表示名は自由に変更できます。Gmail アドレスは他の参加者には表示されません。"
+          : "この参加者の表示名は編集できません。Gmail アドレスは他の参加者には表示されません。"
+      }</p>
     </article>
   `).join("");
 
@@ -559,6 +573,11 @@ async function saveParticipantName(input) {
 
   const participant = participantById(participantId);
   if (!participant) return;
+  if (!canEditParticipant(participant)) {
+    input.value = previousName;
+    setImportStatus("招待側では他の参加者名は編集できません", "error");
+    return;
+  }
 
   const updatedParticipant = {
     ...participant,
