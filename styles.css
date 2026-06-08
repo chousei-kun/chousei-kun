@@ -593,6 +593,10 @@ button {
   gap: 6px;
 }
 
+.name-editor.readonly {
+  gap: 6px;
+}
+
 .name-editor span,
 .person-meta {
   font-size: 12px;
@@ -612,6 +616,15 @@ button {
 .name-input:focus {
   outline: 2px solid rgba(21, 92, 65, 0.14);
   border-color: var(--mint-deep);
+}
+
+.readonly-name {
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f3f6f4;
+  color: var(--ink);
 }
 
 .calendar-row {

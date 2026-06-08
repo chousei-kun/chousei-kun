@@ -185,6 +185,31 @@ function canEditParticipant(person) {
   return person.id === currentParticipantId();
 }
 
+function renderParticipantNameControl(person) {
+  if (!canEditParticipant(person)) {
+    return `
+      <div class="name-editor readonly">
+        <span>参加者名</span>
+        <div class="readonly-name">${escapeHtml(person.name)}</div>
+      </div>
+    `;
+  }
+
+  return `
+    <label class="name-editor">
+      <span>参加者名</span>
+      <input
+        class="name-input"
+        type="text"
+        maxlength="120"
+        data-participant-id="${escapeHtml(person.id)}"
+        data-saved-name="${escapeHtml(person.name)}"
+        value="${escapeHtml(person.name)}"
+      />
+    </label>
+  `;
+}
+
 function sanitizeGoogleClientIdClient(clientId) {
   const value = String(clientId || "").trim();
   if (!value) return "";
@@ -501,24 +526,13 @@ function renderPeople() {
   peopleList.innerHTML = people.map((person) => `
       <article class="person-card">
         <div class="person-head">
-        <div class="avatar">${person.initials}</div>
-        <div>
-          <strong>${escapeHtml(person.name)}</strong>
-          <div class="pill secure">Google接続済み</div>
+          <div class="avatar">${person.initials}</div>
+          <div>
+            <strong>${escapeHtml(person.name)}</strong>
+            <div class="pill secure">Google接続済み</div>
+          </div>
         </div>
-      </div>
-      <label class="name-editor">
-        <span>参加者名</span>
-          <input
-            class="name-input"
-            type="text"
-            maxlength="120"
-            data-participant-id="${escapeHtml(person.id)}"
-            data-saved-name="${escapeHtml(person.name)}"
-            value="${escapeHtml(person.name)}"
-            ${canEditParticipant(person) ? "" : "disabled"}
-          />
-        </label>
+      ${renderParticipantNameControl(person)}
       <p class="person-meta">${
         canEditParticipant(person)
           ? "表示名は自由に変更できます。Gmail アドレスは他の参加者には表示されません。"
