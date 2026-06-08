@@ -60,6 +60,21 @@ window.SLOTWISE_CONFIG = {
 
 `googleClientId` は公開識別子なので `config.js` に置いて問題ありません。`client secret` は入れません。
 
+## 新規連携の通知メール
+
+新しく Google カレンダー連携した参加者が出たときに通知メールを送りたい場合は、`config.js` の `notificationWebhookUrl` に Webhook URL を設定します。
+
+```js
+window.SLOTWISE_CONFIG = {
+  googleClientId: "xxxxx.apps.googleusercontent.com",
+  roomStore: "local",
+  preferredGoogleAccount: "your-account@gmail.com",
+  notificationWebhookUrl: "https://script.google.com/macros/s/your-web-app-id/exec"
+};
+```
+
+GitHub Pages は静的サイトなので、実際のメール送信は Google Apps Script など外部の受け口で行います。
+
 ## GitHub
 
 - Repository: `https://github.com/chousei-kun/chousei-kun`

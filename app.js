@@ -57,6 +57,7 @@ const isInviteLink = pageParams.get("invite") === "1";
 const configuredGoogleClientId = window.SLOTWISE_CONFIG?.googleClientId || "";
 const configuredRoomStore = window.SLOTWISE_CONFIG?.roomStore || "";
 const configuredPreferredGoogleAccount = window.SLOTWISE_CONFIG?.preferredGoogleAccount || "";
+const configuredNotificationWebhookUrl = window.SLOTWISE_CONFIG?.notificationWebhookUrl || "";
 const prefersLocalRoomStore = configuredRoomStore === "local" || window.location.hostname.endsWith("github.io");
 const hostKeyStorageKey = `chousei-kun.hostKey.${roomId}`;
 const storedHostKey = localStorage.getItem(hostKeyStorageKey) || "";
@@ -98,6 +99,10 @@ function currentGoogleClientId() {
 
 function currentPreferredGoogleAccount() {
   return configuredPreferredGoogleAccount.trim().toLowerCase();
+}
+
+function currentNotificationWebhookUrl() {
+  return configuredNotificationWebhookUrl.trim();
 }
 
 function updateConnectionUi() {
@@ -356,6 +361,33 @@ async function localRoomRequest(options = {}) {
 
   writeLocalRoom(nextRoom);
   return presentLocalRoom(nextRoom);
+}
+
+async function notifyNewParticipantConnection(participant) {
+  const webhookUrl = currentNotificationWebhookUrl();
+  if (!webhookUrl || !participant?.email) return;
+
+  try {
+    await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        type: "participant_connected",
+        app: "調整くん",
+        roomId,
+        participant: {
+          id: participant.id,
+          name: participant.name,
+          email: participant.email
+        },
+        connectedAt: new Date().toISOString()
+      })
+    });
+  } catch {
+    // Ignore notification failures so calendar import still succeeds.
+  }
 }
 
 function mergedBusyForDate(dateText, bufferMinutes) {
@@ -1055,6 +1087,7 @@ async function importGoogleFreeBusy() {
   const profile = state.currentGoogleUser;
   const participantId = participantIdForProfile(profile);
   const existingParticipant = participantById(participantId);
+  const isNewParticipant = !existingParticipant;
   const resolvedName = existingParticipant?.customName
     ? existingParticipant.name
     : (profile.name || profile.email || "Google User");
@@ -1079,6 +1112,9 @@ async function importGoogleFreeBusy() {
   persistPreferredAccountSnapshot(connectedPerson);
   try {
     const room = await publishParticipantToRoom(connectedPerson);
+    if (isNewParticipant) {
+      await notifyNewParticipantConnection(connectedPerson);
+    }
     setImportStatus(`${connectedPerson.name} をルームへ共有しました。現在 ${room.participants?.length || 1}人が参加中です`);
   } catch (error) {
     setImportStatus(`${connectedPerson.name} の free/busy は読み込み済みですが、ルーム共有に失敗しました: ${error.message}`, "error");

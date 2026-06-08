@@ -51,11 +51,34 @@ Example runtime config:
 ```js
 window.SLOTWISE_CONFIG = {
   googleClientId: "xxxxx.apps.googleusercontent.com",
-  roomStore: "local"
+  roomStore: "local",
+  notificationWebhookUrl: "https://script.google.com/macros/s/your-web-app-id/exec"
 };
 ```
 
 `roomStore: "local"` makes the app use browser-local room storage on GitHub Pages.
+
+## Notification email webhook
+
+If you want an email when a new participant connects a Google Calendar, set `notificationWebhookUrl` to a webhook that accepts JSON `POST` requests.
+
+The app sends:
+
+```json
+{
+  "type": "participant_connected",
+  "app": "調整くん",
+  "roomId": "room-id",
+  "participant": {
+    "id": "google-...",
+    "name": "Participant Name",
+    "email": "participant@example.com"
+  },
+  "connectedAt": "2026-06-08T00:00:00.000Z"
+}
+```
+
+One lightweight option is a Google Apps Script web app. Google documents both `doPost(e)` web apps and mail sending via `MailApp.sendEmail()`.
 
 ## Local development
 
