@@ -92,11 +92,8 @@
             <div class="field-row">
             <label class="field">
               <span>所要時間</span>
-              <select id="duration">
-                <option value="30">30分</option>
-                <option value="60">60分</option>
-                <option value="90">90分</option>
-              </select>
+              <input id="duration" type="number" min="15" max="480" step="5" value="30" />
+              <small class="field-note">5分単位で自由に設定できます</small>
             </label>
               <label class="field">
                 <span>候補数</span>

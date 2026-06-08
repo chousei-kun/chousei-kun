@@ -126,6 +126,18 @@ const formatDate = (dateText) => {
 
 const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 
+function normalizedDurationMinutes() {
+  const input = document.querySelector("#duration");
+  const fallback = 30;
+  const parsed = Number(input.value);
+  const nextValue = Number.isFinite(parsed) ? parsed : fallback;
+  const normalized = Math.min(480, Math.max(15, Math.round(nextValue / 5) * 5));
+  if (String(normalized) !== input.value) {
+    input.value = String(normalized);
+  }
+  return normalized;
+}
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -221,7 +233,7 @@ function scoreSlot(dateText, start, duration, meetingType) {
 function generateSuggestions() {
   if (!people.length) return [];
 
-  const duration = Number(document.querySelector("#duration").value);
+  const duration = normalizedDurationMinutes();
   const count = Number(document.querySelector("#candidateCount").value);
   const workStart = minuteOfDay(document.querySelector("#workStart").value);
   const workEnd = minuteOfDay(document.querySelector("#workEnd").value);
