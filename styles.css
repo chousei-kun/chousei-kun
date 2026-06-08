@@ -949,6 +949,18 @@ dialog::backdrop {
     grid-template-columns: 1fr;
   }
 
+  .control-panel {
+    order: 1;
+  }
+
+  .suggestions-panel {
+    order: 2;
+  }
+
+  .timeline-panel {
+    order: 3;
+  }
+
   .day-row {
     grid-template-columns: 1fr;
     gap: 8px;
