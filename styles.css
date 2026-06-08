@@ -498,6 +498,44 @@ button {
   background: #fbfcfb;
 }
 
+.suggestion-card.selected {
+  border-color: rgba(32, 120, 88, 0.42);
+  box-shadow: inset 0 0 0 1px rgba(32, 120, 88, 0.18);
+  background: #f6fbf8;
+}
+
+.selection-composer {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.section-head.compact {
+  gap: 10px;
+}
+
+.section-head.compact h4 {
+  margin: 0;
+  font-size: 14px;
+}
+
+.selection-composer textarea {
+  width: 100%;
+  min-height: 132px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.55;
+  resize: vertical;
+}
+
 .create-event-button {
   justify-self: start;
 }

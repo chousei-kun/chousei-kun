@@ -12,6 +12,7 @@ const state = {
   hostKey: "",
   roomGoogleClientId: "",
   rememberedPreferredAccount: false,
+  selectedCandidateKeys: new Set(),
   lastRoomSync: ""
 };
 
@@ -193,6 +194,13 @@ const formatDate = (dateText) => {
   return `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`;
 };
 
+const formatCandidateMessageDate = (dateText) => {
+  const date = new Date(`${dateText}T00:00:00+09:00`);
+  return `${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
+};
+
+const candidateKey = (candidate) => `${candidate.dateText}-${candidate.start}-${candidate.end}`;
+
 const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 
 function normalizedDurationMinutes({ commit = false } = {}) {
@@ -294,6 +302,22 @@ function presentLocalRoom(room) {
       email: canSeeEmails ? participant.email || "" : ""
     }))
   };
+}
+
+function renderCandidateMessage(candidates = []) {
+  const textarea = document.querySelector("#candidateMessage");
+  if (!textarea) return;
+  const selected = candidates.filter((candidate) => state.selectedCandidateKeys.has(candidateKey(candidate)));
+
+  if (!selected.length) {
+    textarea.value = "";
+    return;
+  }
+
+  textarea.value = selected.map((candidate, index) => {
+    const marker = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"][index] || `${index + 1}.`;
+    return `${marker}${formatCandidateMessageDate(candidate.dateText)} ${timeFromMinute(candidate.start)}~`;
+  }).join("\n");
 }
 
 async function localRoomRequest(options = {}) {
@@ -517,6 +541,7 @@ function renderSuggestions() {
         <span>参加者が追加されると、2カ月先までの空き候補を生成します。</span>
       </article>
     `;
+    renderCandidateMessage([]);
     return;
   }
 
@@ -528,10 +553,15 @@ function renderSuggestions() {
         <span>1分単位で自由に入力できます。数字を入れると候補を計算します。</span>
       </article>
     `;
+    renderCandidateMessage([]);
     return;
   }
 
   const candidates = generateSuggestions();
+  const candidateKeys = new Set(candidates.map(candidateKey));
+  state.selectedCandidateKeys = new Set(
+    [...state.selectedCandidateKeys].filter((key) => candidateKeys.has(key))
+  );
 
   if (!candidates.length) {
     suggestions.innerHTML = `
@@ -540,11 +570,12 @@ function renderSuggestions() {
         <span>業務時間、所要時間、前後バッファを調整してください。</span>
       </article>
     `;
+    renderCandidateMessage([]);
     return;
   }
 
   suggestions.innerHTML = candidates.map((candidate, index) => `
-    <article class="suggestion-card" data-date="${candidate.dateText}" data-start="${candidate.start}" data-end="${candidate.end}">
+    <article class="suggestion-card ${state.selectedCandidateKeys.has(candidateKey(candidate)) ? "selected" : ""}" data-date="${candidate.dateText}" data-start="${candidate.start}" data-end="${candidate.end}">
       <div class="suggestion-head">
         <div>
           <div class="suggestion-date">${index + 1}. ${formatDate(candidate.dateText)}</div>
@@ -555,6 +586,9 @@ function renderSuggestions() {
       <div class="reason-list">
         ${candidate.reasons.map((reason) => `<span class="reason">${reason}</span>`).join("")}
       </div>
+      <button class="ghost-button select-candidate-button" type="button" data-key="${candidateKey(candidate)}">
+        <span aria-hidden="true">${state.selectedCandidateKeys.has(candidateKey(candidate)) ? "✓" : "○"}</span><span>${state.selectedCandidateKeys.has(candidateKey(candidate)) ? "選択中" : "候補に入れる"}</span>
+      </button>
       <button class="primary-button create-event-button" type="button" data-date="${candidate.dateText}" data-start="${candidate.start}" data-end="${candidate.end}">
         <span aria-hidden="true">＋</span><span>予定作成</span>
       </button>
@@ -564,6 +598,21 @@ function renderSuggestions() {
   suggestions.querySelectorAll(".create-event-button").forEach((button) => {
     button.addEventListener("click", () => createCalendarEventFromCandidate(button));
   });
+
+  suggestions.querySelectorAll(".select-candidate-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const key = button.dataset.key;
+      if (!key) return;
+      if (state.selectedCandidateKeys.has(key)) {
+        state.selectedCandidateKeys.delete(key);
+      } else {
+        state.selectedCandidateKeys.add(key);
+      }
+      renderSuggestions();
+    });
+  });
+
+  renderCandidateMessage(candidates);
 }
 
 function renderPeople() {
@@ -1152,6 +1201,21 @@ document.querySelector("#copyShareUrlButton").addEventListener("click", async ()
   } catch {
     document.querySelector("#shareUrl").select();
     setImportStatus("共有URLを選択しました。コピーしてください。");
+  }
+});
+
+document.querySelector("#copyCandidateMessageButton").addEventListener("click", async () => {
+  const message = document.querySelector("#candidateMessage").value.trim();
+  if (!message) {
+    setImportStatus("先に候補日を選んでください", "error");
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(message);
+    setImportStatus("候補文面をコピーしました");
+  } catch {
+    document.querySelector("#candidateMessage").select();
+    setImportStatus("候補文面を選択しました。コピーしてください。");
   }
 });
 
