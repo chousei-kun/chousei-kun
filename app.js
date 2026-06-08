@@ -1044,7 +1044,6 @@ function requestGoogleCalendarAccess() {
   const tokenClient = google.accounts.oauth2.initTokenClient({
     client_id: clientId,
     scope: GOOGLE_SCOPES,
-    login_hint: currentPreferredGoogleAccount() || undefined,
     prompt: "select_account consent",
     include_granted_scopes: true,
     callback: async (tokenResponse) => {
@@ -1060,10 +1059,15 @@ function requestGoogleCalendarAccess() {
             currentPreferredGoogleAccount() &&
             (state.currentGoogleUser?.email || "").toLowerCase() !== currentPreferredGoogleAccount()
           ) {
-            state.accessToken = "";
-            state.currentGoogleUser = null;
-            setImportStatus(`このアプリは ${currentPreferredGoogleAccount()} で連携してください`, "error");
-            return;
+            const approved = window.confirm(
+              `${state.currentGoogleUser?.email || "このアカウント"} で連携しますか？\n\n${currentPreferredGoogleAccount()} 以外のアカウントは毎回確認が入ります。`
+            );
+            if (!approved) {
+              state.accessToken = "";
+              state.currentGoogleUser = null;
+              setImportStatus("別アカウントでの連携をキャンセルしました");
+              return;
+            }
           }
           const calendars = await fetchGoogleCalendars();
           await importGoogleFreeBusy();
