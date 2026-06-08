@@ -31,6 +31,11 @@ body {
   display: none !important;
 }
 
+#clientIdField,
+.client-id-note {
+  display: none !important;
+}
+
 button,
 input,
 select {
@@ -226,11 +231,6 @@ button {
   background: white;
   border-color: var(--line);
   color: var(--ink);
-}
-
-.ghost-button.danger {
-  border-color: rgba(233, 135, 112, 0.35);
-  color: #a94531;
 }
 
 .icon-button {

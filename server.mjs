@@ -52,10 +52,6 @@ function sanitizeGoogleClientId(clientId) {
   return /^[a-zA-Z0-9-]+\.apps\.googleusercontent\.com$/.test(value) ? value.slice(0, 200) : "";
 }
 
-function sanitizeHostKey(hostKey) {
-  return String(hostKey || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
-}
-
 function sanitizeParticipant(participant) {
   if (!participant || typeof participant !== "object") return null;
   if (!participant.id || !participant.name || !participant.busy) return null;
@@ -106,7 +102,7 @@ async function readRequestBody(request) {
 async function handleRoomApi(request, response) {
   const url = new URL(request.url, `http://localhost:${port}`);
   const roomId = sanitizeRoomId(url.searchParams.get("room"));
-  const hostKey = sanitizeHostKey(url.searchParams.get("host"));
+  const hostKey = sanitizeRoomId(url.searchParams.get("host"));
   if (!roomId) {
     response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
     response.end(JSON.stringify({ error: "room is required" }));
@@ -129,52 +125,8 @@ async function handleRoomApi(request, response) {
   }
 
   const body = JSON.parse(await readRequestBody(request) || "{}");
-  const action = String(body.action || "");
   const participant = sanitizeParticipant(body.participant);
   const googleClientId = sanitizeGoogleClientId(body.googleClientId);
-  const nextHostKey = sanitizeHostKey(body.hostKey);
-  const removeParticipantId = body.removeParticipantId ? String(body.removeParticipantId).slice(0, 160) : "";
-
-  if (action === "setHost") {
-    if (!nextHostKey) {
-      response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-      response.end(JSON.stringify({ error: "hostKey is required" }));
-      return;
-    }
-    rooms[roomId] = {
-      roomId,
-      hostKey: nextHostKey,
-      googleClientId: current.googleClientId || googleClientId || "",
-      participants: Array.isArray(current.participants) ? current.participants : [],
-      updatedAt: new Date().toISOString()
-    };
-    await writeRooms(rooms);
-    response.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
-    response.end(JSON.stringify(presentRoom(rooms[roomId], nextHostKey)));
-    return;
-  }
-
-  if (action === "removeParticipant") {
-    if (!removeParticipantId) {
-      response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
-      response.end(JSON.stringify({ error: "removeParticipantId is required" }));
-      return;
-    }
-    rooms[roomId] = {
-      roomId,
-      hostKey: current.hostKey || nextHostKey || "",
-      googleClientId: current.googleClientId || googleClientId || "",
-      participants: (Array.isArray(current.participants) ? current.participants : []).filter(
-        (item) => item.id !== removeParticipantId
-      ),
-      updatedAt: new Date().toISOString()
-    };
-    await writeRooms(rooms);
-    response.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
-    response.end(JSON.stringify(presentRoom(rooms[roomId], nextHostKey)));
-    return;
-  }
-
   if (!participant && !googleClientId) {
     response.writeHead(400, { "Content-Type": "application/json; charset=utf-8" });
     response.end(JSON.stringify({ error: "valid participant or googleClientId is required" }));

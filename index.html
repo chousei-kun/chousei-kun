@@ -11,53 +11,43 @@
         }
       })();
     </script>
-    <title>隱ｿ謨ｴ縺上ｓ</title>
+    <title>調整くん</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="app-shell">
-      <aside class="sidebar" aria-label="繝ｯ繝ｼ繧ｯ繧ｹ繝壹・繧ｹ">
+      <aside class="sidebar" aria-label="ワークスペース">
         <div class="brand">
           <div class="brand-mark" aria-hidden="true">S</div>
           <div>
-            <h1>隱ｿ謨ｴ縺上ｓ</h1>
-            <p>繧｢繝昴う繝ｳ繝郁ｪｿ謨ｴ</p>
+            <h1>調整くん</h1>
+            <p>アポイント調整</p>
           </div>
         </div>
 
-        <nav class="nav-list" aria-label="繝｡繝九Η繝ｼ">
-          <button class="nav-item active" type="button" data-view="schedule" title="隱ｿ謨ｴ">
-            <span aria-hidden="true">笳・/span><span>隱ｿ謨ｴ</span>
+        <nav class="nav-list" aria-label="メニュー">
+          <button class="nav-item active" type="button" data-view="schedule" title="調整">
+            <span aria-hidden="true">◎</span><span>調整</span>
           </button>
-          <button class="nav-item" type="button" data-view="people" title="蜿ょ刈閠・>
-            <span aria-hidden="true">笳・/span><span>蜿ょ刈閠・/span>
+          <button class="nav-item" type="button" data-view="people" title="参加者">
+            <span aria-hidden="true">◇</span><span>参加者</span>
           </button>
-          <button class="nav-item" type="button" data-view="privacy" title="讓ｩ髯・>
-            <span aria-hidden="true">笳・/span><span>讓ｩ髯・/span>
+          <button class="nav-item" type="button" data-view="privacy" title="権限">
+            <span aria-hidden="true">◐</span><span>権限</span>
           </button>
         </nav>
 
-        <section class="status-panel" aria-label="謗･邯夂憾諷・>
+        <section class="status-panel" aria-label="接続状態">
           <div class="status-row">
             <span>Google OAuth</span>
-            <strong id="oauthStatus">譛ｪ謗･邯・/strong>
+            <strong id="oauthStatus">未接続</strong>
           </div>
           <div class="status-row">
-            <span>蜈ｱ譛臥ｯ・峇</span>
-            <strong>蛟呵｣懊・縺ｿ</strong>
-          </div>
-          <div class="status-row">
-            <span>繝帙せ繝・/span>
-            <strong id="hostStatus">譛ｪ險ｭ螳・/strong>
+            <span>共有範囲</span>
+            <strong>候補のみ</strong>
           </div>
           <button class="ghost-button" id="connectButton" type="button">
-            <span aria-hidden="true">・・/span><span>繧ｫ繝ｬ繝ｳ繝繝ｼ謗･邯・/span>
-          </button>
-          <button class="ghost-button" id="becomeHostButton" type="button">
-            <span aria-hidden="true">笘・/span><span>繝帙せ繝医↓縺ｪ繧・/span>
-          </button>
-          <button class="ghost-button danger" id="disconnectButton" type="button">
-            <span aria-hidden="true">竏・/span><span>騾｣謳ｺ隗｣髯､</span>
+            <span aria-hidden="true">＋</span><span>カレンダー接続</span>
           </button>
         </section>
       </aside>
@@ -65,121 +55,121 @@
       <section class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">莉企ｱ縺ｮ蛟呵｣・/p>
-            <h2>Google 繧ｫ繝ｬ繝ｳ繝繝ｼ縺九ｉ蛟呵｣懊ｒ驕ｸ縺ｶ</h2>
+            <p class="eyebrow">今週の候補</p>
+            <h2>Google カレンダーから候補を選ぶ</h2>
           </div>
           <div class="topbar-actions">
-            <button class="icon-button" id="relearnButton" type="button" title="蟄ｦ鄙偵ｒ譖ｴ譁ｰ" aria-label="蟄ｦ鄙偵ｒ譖ｴ譁ｰ">竊ｻ</button>
+            <button class="icon-button" id="relearnButton" type="button" title="学習を更新" aria-label="学習を更新">↻</button>
             <button class="primary-button" id="suggestButton" type="button">
-              <span aria-hidden="true">笳・/span><span>蛟呵｣懊ｒ逕滓・</span>
+              <span aria-hidden="true">◎</span><span>候補を生成</span>
             </button>
           </div>
         </header>
 
         <section class="invite-banner" id="inviteBanner" hidden>
           <div>
-            <p class="eyebrow">諡帛ｾ・＆繧後※縺・∪縺・/p>
-            <h3>Google 繧ｫ繝ｬ繝ｳ繝繝ｼ繧帝｣謳ｺ縺励※蛟呵｣懆ｪｿ謨ｴ縺ｫ蜿ょ刈</h3>
-            <p>莠亥ｮ壹・莉ｶ蜷阪ｄ譛ｬ譁・・蜈ｱ譛峨＆繧後★縲∫ｩｺ縺・蝓九∪繧翫□縺代ｒ菴ｿ縺｣縺ｦ蛟呵｣懊ｒ險育ｮ励＠縺ｾ縺吶・/p>
+            <p class="eyebrow">招待されています</p>
+            <h3>Google カレンダーを連携して候補調整に参加</h3>
+            <p>予定の件名や本文は共有されず、空き/埋まりだけを使って候補を計算します。</p>
           </div>
           <button class="primary-button" id="inviteConnectButton" type="button">
-            <span aria-hidden="true">・・/span><span>Google繧ｫ繝ｬ繝ｳ繝繝ｼ縺ｧ蜿ょ刈</span>
+            <span aria-hidden="true">＋</span><span>Googleカレンダーで参加</span>
           </button>
         </section>
 
         <section class="grid-layout view active" id="scheduleView">
-          <section class="control-panel" aria-label="隱ｿ謨ｴ譚｡莉ｶ">
+          <section class="control-panel" aria-label="調整条件">
             <div class="panel-title">
-              <h3>譚｡莉ｶ</h3>
-              <span class="pill">30蛻・ｼ夊ｭｰ</span>
+              <h3>条件</h3>
+              <span class="pill">30分会議</span>
             </div>
 
             <label class="field">
-              <span>莨夊ｭｰ蜷・/span>
-              <input id="meetingTitle" type="text" value="蟆主・逶ｸ隲・ />
+              <span>会議名</span>
+              <input id="meetingTitle" type="text" value="導入相談" />
             </label>
 
             <div class="field-row">
             <label class="field">
-              <span>謇隕∵凾髢・/span>
+              <span>所要時間</span>
               <input id="duration" type="number" min="1" max="480" step="1" value="30" inputmode="numeric" />
-              <small class="field-note">1蛻・腰菴阪〒閾ｪ逕ｱ縺ｫ蜈･蜉帙〒縺阪∪縺・/small>
+              <small class="field-note">1分単位で自由に入力できます</small>
             </label>
               <label class="field">
-                <span>蛟呵｣懈焚</span>
+                <span>候補数</span>
                 <input id="candidateCount" type="number" min="1" max="8" value="5" />
               </label>
             </div>
 
             <div class="field-row">
               <label class="field">
-                <span>髢句ｧ・/span>
+                <span>開始</span>
                 <input id="workStart" type="time" value="10:00" />
               </label>
               <label class="field">
-                <span>邨ゆｺ・/span>
+                <span>終了</span>
                 <input id="workEnd" type="time" value="18:00" />
               </label>
             </div>
 
-            <div class="segmented" role="group" aria-label="莨夊ｭｰ繧ｿ繧､繝・>
-              <button class="segment active" type="button" data-meeting-type="online">繧ｪ繝ｳ繝ｩ繧､繝ｳ</button>
-              <button class="segment" type="button" data-meeting-type="onsite">險ｪ蝠・/button>
-              <button class="segment" type="button" data-meeting-type="focus">髮・ｸｭ</button>
+            <div class="segmented" role="group" aria-label="会議タイプ">
+              <button class="segment active" type="button" data-meeting-type="online">オンライン</button>
+              <button class="segment" type="button" data-meeting-type="onsite">訪問</button>
+              <button class="segment" type="button" data-meeting-type="focus">集中</button>
             </div>
 
             <label class="toggle-row">
               <input id="bufferToggle" type="checkbox" checked />
-              <span>蜑榊ｾ・5蛻・ｒ遒ｺ菫・/span>
+              <span>前後15分を確保</span>
             </label>
 
             <label class="toggle-row">
               <input id="hideOwnerToggle" type="checkbox" checked />
-              <span>荳榊庄逅・罰縺ｮ蛟倶ｺｺ蜷阪ｒ髫縺・/span>
+              <span>不可理由の個人名を隠す</span>
             </label>
 
             <div class="inline-calendar-panel">
               <div class="section-head compact">
-                <h4>陦ｨ遉ｺ縺吶ｋ繧ｫ繝ｬ繝ｳ繝繝ｼ蛟呵｣・/h4>
+                <h4>表示するカレンダー候補</h4>
                 <button class="ghost-button" id="editCalendarsButton" type="button">
-                  <span aria-hidden="true">笞・/span><span>騾｣謳ｺ險ｭ螳・/span>
+                  <span aria-hidden="true">⚙</span><span>連携設定</span>
                 </button>
               </div>
-              <small class="field-note">蛟呵｣懆ｨ育ｮ励↓菴ｿ縺・き繝ｬ繝ｳ繝繝ｼ繧帝∈縺ｹ縺ｾ縺吶・/small>
+              <small class="field-note">候補計算に使うカレンダーを選べます。</small>
               <div id="inlineCalendarSelection" class="calendar-selection inline"></div>
             </div>
 
             <div class="share-box">
-              <span>蜈ｱ譛蔚RL</span>
+              <span>共有URL</span>
               <input id="shareUrl" type="text" readonly />
               <button class="ghost-button" id="copyShareUrlButton" type="button">
-                <span aria-hidden="true">笆｡</span><span>繧ｳ繝斐・</span>
+                <span aria-hidden="true">□</span><span>コピー</span>
               </button>
               <small class="field-note" id="shareModeNote"></small>
             </div>
           </section>
 
-          <section class="timeline-panel" aria-label="繧ｿ繧､繝繝ｩ繧､繝ｳ">
+          <section class="timeline-panel" aria-label="タイムライン">
             <div class="panel-title">
-              <h3>遨ｺ縺咲憾豕・/h3>
-              <span id="privacyBadge" class="pill secure">隧ｳ邏ｰ髱櫁｡ｨ遉ｺ</span>
+              <h3>空き状況</h3>
+              <span id="privacyBadge" class="pill secure">詳細非表示</span>
             </div>
             <div id="timeline" class="timeline"></div>
           </section>
 
-          <section class="suggestions-panel" aria-label="蛟呵｣・>
+          <section class="suggestions-panel" aria-label="候補">
             <div class="panel-title">
-              <h3>謠先｡・/h3>
-              <span id="learningState" class="pill">蟄ｦ鄙呈ｸ医∩</span>
+              <h3>提案</h3>
+              <span id="learningState" class="pill">学習済み</span>
             </div>
             <div class="selection-composer">
               <div class="section-head compact">
-                <h4>騾∽ｿ｡逕ｨ譁・擇</h4>
+                <h4>送信用文面</h4>
                 <button class="ghost-button" id="copyCandidateMessageButton" type="button">
-                  <span aria-hidden="true">隨・ｽ｡</span><span>譁・擇繧偵さ繝斐・</span>
+                  <span aria-hidden="true">笆｡</span><span>文面をコピー</span>
                 </button>
               </div>
-              <textarea id="candidateMessage" rows="6" readonly placeholder="蛟呵｣懊ｒ驕ｸ縺ｶ縺ｨ縲√％縺薙↓騾∽ｿ｡逕ｨ縺ｮ譁・擇縺悟・繧翫∪縺吶・></textarea>
+              <textarea id="candidateMessage" rows="6" readonly placeholder="候補を選ぶと、ここに送信用の文面が入ります。"></textarea>
             </div>
             <div id="suggestions" class="suggestions"></div>
           </section>
@@ -187,9 +177,9 @@
 
         <section class="view people-view" id="peopleView">
           <div class="section-head">
-            <h3>蜿ょ刈閠・/h3>
+            <h3>参加者</h3>
             <button class="primary-button" id="peopleConnectButton" type="button">
-              <span aria-hidden="true">・・/span><span>Google謗･邯・/span>
+              <span aria-hidden="true">＋</span><span>Google接続</span>
             </button>
           </div>
           <div id="peopleList" class="people-list"></div>
@@ -197,24 +187,24 @@
 
         <section class="view privacy-view" id="privacyView">
           <div class="section-head">
-            <h3>讓ｩ髯・/h3>
-            <span class="pill secure">譛蟆乗ｨｩ髯・/span>
+            <h3>権限</h3>
+            <span class="pill secure">最小権限</span>
           </div>
           <div class="permission-grid">
             <article class="permission-card">
-              <span class="permission-icon">笳・/span>
-              <h4>蜿門ｾ・/h4>
-              <p>freeBusy 縺ｨ calendarList 縺ｮ縺ｿ</p>
+              <span class="permission-icon">◐</span>
+              <h4>取得</h4>
+              <p>freeBusy と calendarList のみ</p>
             </article>
             <article class="permission-card">
-              <span class="permission-icon">笆｡</span>
-              <h4>髱槫叙蠕・/h4>
-              <p>莉ｶ蜷阪∵悽譁・∝ｴ謇縲∝盾蜉閠・/p>
+              <span class="permission-icon">□</span>
+              <h4>非取得</h4>
+              <p>件名、本文、場所、参加者</p>
             </article>
             <article class="permission-card">
-              <span class="permission-icon">笳・/span>
-              <h4>蜈ｱ譛・/h4>
-              <p>遒ｺ螳壼呵｣懊→蝗樒ｭ斐せ繝・・繧ｿ繧ｹ</p>
+              <span class="permission-icon">◎</span>
+              <h4>共有</h4>
+              <p>確定候補と回答ステータス</p>
             </article>
           </div>
           <div class="audit-log" id="auditLog"></div>
@@ -225,45 +215,52 @@
     <dialog id="connectDialog">
       <form method="dialog" class="modal">
         <div class="modal-head">
-          <h3>Google 繧ｫ繝ｬ繝ｳ繝繝ｼ謗･邯・/h3>
-          <button class="icon-button" value="cancel" type="submit" aria-label="髢峨§繧・>ﾃ・/button>
+          <h3>Google カレンダー接続</h3>
+          <button class="icon-button" value="cancel" type="submit" aria-label="閉じる">×</button>
         </div>
         <div class="scope-list">
-          <div class="modal-note">
-            Google 連携はアプリ側で設定済みです。ここで追加の入力は必要ありません。
-          </div>
+          <p class="modal-note">
+            Google 連携はこのアプリで設定済みです。追加の入力は必要ありません。
+          </p>
+          <label class="field" id="clientIdField">
+            <span>Google OAuth Client ID</span>
+            <input id="googleClientId" type="text" placeholder="xxxxx.apps.googleusercontent.com" autocomplete="off" />
+          </label>
+          <p class="modal-note client-id-note">
+            Google Cloud Console で作成した Web application の Client ID を入れてください。
+          </p>
           <div class="origin-box">
-            <span>逋ｻ骭ｲ縺吶ｋ JavaScript origin</span>
-            <code id="currentOrigin">隱ｭ縺ｿ霎ｼ縺ｿ荳ｭ</code>
+            <span>登録する JavaScript origin</span>
+            <code id="currentOrigin">読み込み中</code>
           </div>
           <label class="toggle-row">
             <input type="checkbox" checked disabled />
-            <span>繧ｫ繝ｬ繝ｳ繝繝ｼ荳隕ｧ繧定ｪｭ繧</span>
+            <span>カレンダー一覧を読む</span>
           </label>
           <label class="toggle-row">
             <input type="checkbox" checked disabled />
-            <span>遨ｺ縺・蝓九∪繧翫□縺代ｒ隱ｭ繧</span>
+            <span>空き/埋まりだけを読む</span>
           </label>
           <label class="toggle-row">
             <input type="checkbox" checked disabled />
-            <span>驕ｸ繧薙□蛟呵｣懊ｒ莠亥ｮ壹→縺励※菴懈・縺吶ｋ</span>
+            <span>選んだ候補を予定として作成する</span>
           </label>
           <label class="toggle-row muted">
             <input type="checkbox" disabled />
-            <span>莠亥ｮ夊ｩｳ邏ｰ繧定ｪｭ繧</span>
+            <span>予定詳細を読む</span>
           </label>
-          <div id="calendarImportStatus" class="import-status">譛ｪ謗･邯・/div>
+          <div id="calendarImportStatus" class="import-status">未接続</div>
           <ul id="oauthChecklist" class="oauth-checklist" hidden>
-            <li>繝昴ャ繝励い繝・・繧帝哩縺倥★縲；oogle 縺ｮ險ｱ蜿ｯ逕ｻ髱｢繧呈怙蠕後∪縺ｧ騾ｲ繧√ｋ</li>
-            <li>Google Cloud Console 縺ｮ Authorized JavaScript origins 縺ｫ荳翫・ origin 繧堤匳骭ｲ縺吶ｋ</li>
-            <li>OAuth consent screen 縺ｮ Test users 縺ｫ閾ｪ蛻・・ Google 繧｢繧ｫ繧ｦ繝ｳ繝医ｒ霑ｽ蜉縺吶ｋ</li>
-            <li>Google Calendar API 繧呈怏蜉ｹ蛹悶☆繧・/li>
+            <li>ポップアップを閉じず、Google の許可画面を最後まで進める</li>
+            <li>Google Cloud Console の Authorized JavaScript origins に上の origin を登録する</li>
+            <li>OAuth consent screen の Test users に自分の Google アカウントを追加する</li>
+            <li>Google Calendar API を有効化する</li>
           </ul>
           <div id="calendarSelection" class="calendar-selection"></div>
         </div>
         <menu class="modal-actions">
-          <button class="ghost-button" value="cancel" type="submit">繧ｭ繝｣繝ｳ繧ｻ繝ｫ</button>
-          <button class="primary-button" id="googleConnectConfirm" type="button">Google縺ｧ險ｱ蜿ｯ</button>
+          <button class="ghost-button" value="cancel" type="submit">キャンセル</button>
+          <button class="primary-button" id="googleConnectConfirm" type="button">Googleで許可</button>
         </menu>
       </form>
     </dialog>
