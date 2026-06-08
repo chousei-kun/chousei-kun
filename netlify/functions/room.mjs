@@ -92,6 +92,7 @@ export default async (request) => {
   }
 
   const participants = Array.isArray(current.participants) ? current.participants : [];
+  const nextNotifyEmail = current.notifyEmail || (hostKey && participant?.email ? participant.email : "");
   const nextParticipants = participant
     ? [
         participant,
@@ -103,6 +104,7 @@ export default async (request) => {
     roomId,
     hostKey: current.hostKey || hostKey || "",
     googleClientId: current.googleClientId || googleClientId || "",
+    notifyEmail: nextNotifyEmail,
     participants: nextParticipants,
     updatedAt: new Date().toISOString()
   };

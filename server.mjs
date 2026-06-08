@@ -139,17 +139,20 @@ async function handleRoomApi(request, response) {
     return;
   }
 
+  const currentParticipants = current.participants || [];
+  const nextNotifyEmail = current.notifyEmail || (hostKey && participant?.email ? participant.email : "");
   const nextParticipants = participant
     ? [
         participant,
-        ...(current.participants || []).filter((item) => item.id !== participant.id)
+        ...currentParticipants.filter((item) => item.id !== participant.id)
       ].slice(0, 50)
-    : (current.participants || []);
+    : currentParticipants;
 
   rooms[roomId] = {
     roomId,
     hostKey: current.hostKey || hostKey || "",
     googleClientId: current.googleClientId || googleClientId || "",
+    notifyEmail: nextNotifyEmail,
     participants: nextParticipants,
     updatedAt: new Date().toISOString()
   };

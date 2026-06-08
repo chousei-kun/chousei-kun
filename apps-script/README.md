@@ -9,18 +9,12 @@ Use the code in `Code.gs` as a single Google Apps Script Web App that serves bot
 
 1. Open your Google Apps Script project.
 2. Replace the existing `Code.gs` contents with `apps-script/Code.gs`.
-3. In `Project Settings` -> `Script properties`, add:
-
-```text
-NOTIFY_EMAIL=your-email@example.com
-```
-
-4. Deploy as `Web app`.
+3. Deploy as `Web app`.
 5. Set:
    - `Execute as`: Me
    - `Who has access`: Anyone
 
-6. Copy the Web App URL.
+4. Copy the Web App URL.
 
 ## App config
 
@@ -37,3 +31,8 @@ window.SLOTWISE_CONFIG = {
 ```
 
 The same Web App URL can be used for both `roomApiUrl` and `notificationWebhookUrl`.
+
+## Host email notifications
+
+When the host connects their Google Calendar first, the room API stores that host email automatically.
+After that, when another participant connects a Google Calendar, an email is sent to the host's Gmail address.

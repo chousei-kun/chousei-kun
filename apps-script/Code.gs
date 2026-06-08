@@ -41,21 +41,34 @@ function handleRoomRequest_(e, method, payload) {
     return jsonOutput_({ error: "valid participant or googleClientId is required" });
   }
 
+  var currentParticipants = current.participants || [];
+  var isNewParticipant = Boolean(participant) && !currentParticipants.some(function (item) {
+    return item.id === participant.id;
+  });
+  var nextNotifyEmail = current.notifyEmail || "";
+  if (!nextNotifyEmail && hostKey && participant && participant.email) {
+    nextNotifyEmail = participant.email;
+  }
+
   var nextParticipants = participant
-    ? [participant].concat((current.participants || []).filter(function (item) {
+    ? [participant].concat(currentParticipants.filter(function (item) {
         return item.id !== participant.id;
       })).slice(0, MAX_PARTICIPANTS)
-    : (current.participants || []);
+    : currentParticipants;
 
   var nextRoom = {
     roomId: roomId,
     hostKey: current.hostKey || hostKey || "",
     googleClientId: current.googleClientId || googleClientId || "",
+    notifyEmail: nextNotifyEmail,
     participants: nextParticipants,
     updatedAt: new Date().toISOString()
   };
 
   writeRoom_(roomId, nextRoom);
+  if (isNewParticipant && nextNotifyEmail && nextNotifyEmail !== participant.email) {
+    sendHostNotification_(nextNotifyEmail, roomId, participant);
+  }
   return jsonOutput_(presentRoom_(nextRoom, hostKey));
 }
 
@@ -162,6 +175,23 @@ function handleParticipantNotification_(payload) {
     "Name: " + (participant.name || ""),
     "Email: " + (participant.email || ""),
     "Connected at: " + (payload.connectedAt || "")
+  ];
+
+  MailApp.sendEmail({
+    to: notifyTo,
+    subject: "[調整くん] New participant connected",
+    body: lines.join("\n")
+  });
+}
+
+function sendHostNotification_(notifyTo, roomId, participant) {
+  var lines = [
+    "A participant connected a Google Calendar.",
+    "",
+    "Room: " + roomId,
+    "Name: " + (participant.name || ""),
+    "Email: " + (participant.email || ""),
+    "Connected at: " + new Date().toISOString()
   ];
 
   MailApp.sendEmail({
