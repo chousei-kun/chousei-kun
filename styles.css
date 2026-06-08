@@ -536,6 +536,19 @@ button {
   resize: vertical;
 }
 
+.inline-calendar-panel {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.calendar-selection.inline {
+  max-height: 220px;
+}
+
 .create-event-button {
   justify-self: start;
 }

@@ -848,29 +848,43 @@ function googleAuthErrorMessage(error) {
 }
 
 function renderCalendarSelection() {
-  const selection = document.querySelector("#calendarSelection");
-  if (!state.googleCalendars.length) {
-    selection.innerHTML = "";
-    return;
-  }
+  const containers = [
+    document.querySelector("#calendarSelection"),
+    document.querySelector("#inlineCalendarSelection")
+  ].filter(Boolean);
 
-  selection.innerHTML = state.googleCalendars.map((calendar) => `
-    <label class="calendar-chip">
-      <span>${calendar.summaryOverride || calendar.summary}</span>
-      <input type="checkbox" data-calendar-id="${calendar.id}" ${
-        state.selectedCalendarIds.has(calendar.id) ? "checked" : ""
-      } />
-    </label>
-  `).join("");
+  if (!containers.length) return;
 
-  selection.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
-    checkbox.addEventListener("change", () => {
-      if (checkbox.checked) {
-        state.selectedCalendarIds.add(checkbox.dataset.calendarId);
-      } else {
-        state.selectedCalendarIds.delete(checkbox.dataset.calendarId);
-      }
-      importGoogleFreeBusy();
+  const markup = state.googleCalendars.length
+    ? state.googleCalendars.map((calendar) => `
+      <label class="calendar-chip">
+        <span>${calendar.summaryOverride || calendar.summary}</span>
+        <input type="checkbox" data-calendar-id="${calendar.id}" ${
+          state.selectedCalendarIds.has(calendar.id) ? "checked" : ""
+        } />
+      </label>
+    `).join("")
+    : '<div class="field-note">Google連携後にカレンダー候補が表示されます。</div>';
+
+  containers.forEach((container) => {
+    container.innerHTML = markup;
+    container.querySelectorAll("input[type='checkbox']").forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        const calendarId = checkbox.dataset.calendarId;
+        if (!calendarId) return;
+
+        if (checkbox.checked) {
+          state.selectedCalendarIds.add(calendarId);
+        } else {
+          state.selectedCalendarIds.delete(calendarId);
+        }
+
+        document.querySelectorAll(`input[data-calendar-id="${calendarId}"]`).forEach((input) => {
+          input.checked = state.selectedCalendarIds.has(calendarId);
+        });
+
+        importGoogleFreeBusy();
+      });
     });
   });
 }
@@ -1236,6 +1250,10 @@ document.querySelector("#connectButton").addEventListener("click", () => {
 document.querySelector("#googleConnectConfirm").addEventListener("click", requestGoogleCalendarAccess);
 
 document.querySelector("#peopleConnectButton").addEventListener("click", () => {
+  document.querySelector("#connectDialog").showModal();
+});
+
+document.querySelector("#editCalendarsButton").addEventListener("click", () => {
   document.querySelector("#connectDialog").showModal();
 });
 
