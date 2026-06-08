@@ -54,7 +54,8 @@ GitHub Pages 版で軽くなるもの:
 ```js
 window.SLOTWISE_CONFIG = {
   googleClientId: "xxxxx.apps.googleusercontent.com",
-  roomStore: "local"
+  roomStore: "local",
+  roomApiUrl: ""
 };
 ```
 
@@ -68,6 +69,7 @@ window.SLOTWISE_CONFIG = {
 window.SLOTWISE_CONFIG = {
   googleClientId: "xxxxx.apps.googleusercontent.com",
   roomStore: "local",
+  roomApiUrl: "",
   preferredGoogleAccount: "your-account@gmail.com",
   notificationWebhookUrl: "https://script.google.com/macros/s/your-web-app-id/exec"
 };

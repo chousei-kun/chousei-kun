@@ -56,9 +56,11 @@ const roomId = initialRoomId || crypto.randomUUID();
 const isInviteLink = pageParams.get("invite") === "1";
 const configuredGoogleClientId = window.SLOTWISE_CONFIG?.googleClientId || "";
 const configuredRoomStore = window.SLOTWISE_CONFIG?.roomStore || "";
+const configuredRoomApiUrl = String(window.SLOTWISE_CONFIG?.roomApiUrl || "").trim();
 const configuredPreferredGoogleAccount = window.SLOTWISE_CONFIG?.preferredGoogleAccount || "";
 const configuredNotificationWebhookUrl = window.SLOTWISE_CONFIG?.notificationWebhookUrl || "";
-const prefersLocalRoomStore = configuredRoomStore === "local" || window.location.hostname.endsWith("github.io");
+const prefersLocalRoomStore =
+  configuredRoomStore === "local" || (!configuredRoomApiUrl && window.location.hostname.endsWith("github.io"));
 const hostKeyStorageKey = `chousei-kun.hostKey.${roomId}`;
 const storedHostKey = localStorage.getItem(hostKeyStorageKey) || "";
 const hostKeyFromUrl = pageParams.get("host") || "";
@@ -167,9 +169,12 @@ function refreshShareUrl() {
 function renderShareModeNote() {
   const note = document.querySelector("#shareModeNote");
   if (!note) return;
-  note.textContent = prefersLocalRoomStore
-    ? "GitHub Pages 版では共有ルームはこのブラウザ内に保存されます。複数人の自動集約を戻すには別の保存先が必要です。"
-    : "共有URLから参加できます。Google連携すると参加者と空き状況が自動で集まります。";
+  if (prefersLocalRoomStore) {
+    note.textContent = "この公開版は現在ブラウザ内だけに保存します。他の参加者を自動表示するには共有用APIの設定が必要です。";
+    return;
+  }
+
+  note.textContent = "共有URLから参加できます。Google連携すると参加者と空き状況が自動で集まります。";
 }
 
 refreshShareUrl();
@@ -773,18 +778,22 @@ async function roomRequest(options = {}) {
     queryParams.set("host", state.hostKey);
   }
   const query = queryParams.toString();
+  const isCrossOriginRoomApi = Boolean(configuredRoomApiUrl);
   const requestOptions = {
     ...options,
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": isCrossOriginRoomApi ? "text/plain;charset=UTF-8" : "application/json",
       ...(options.headers || {})
     }
   };
+  const primaryRoomUrl = configuredRoomApiUrl
+    ? `${configuredRoomApiUrl}${configuredRoomApiUrl.includes("?") ? "&" : "?"}${query}`
+    : `/api/room?${query}`;
   let response;
   try {
-    response = await fetch(`/api/room?${query}`, requestOptions);
+    response = await fetch(primaryRoomUrl, requestOptions);
 
-    if (response.status === 404) {
+    if (!configuredRoomApiUrl && response.status === 404) {
       response = await fetch(`/.netlify/functions/room?${query}`, requestOptions);
     }
 

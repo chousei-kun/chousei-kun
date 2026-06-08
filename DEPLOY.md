@@ -52,11 +52,13 @@ Example runtime config:
 window.SLOTWISE_CONFIG = {
   googleClientId: "xxxxx.apps.googleusercontent.com",
   roomStore: "local",
+  roomApiUrl: "",
   notificationWebhookUrl: "https://script.google.com/macros/s/your-web-app-id/exec"
 };
 ```
 
 `roomStore: "local"` makes the app use browser-local room storage on GitHub Pages.
+If you want participants to see each other across devices, set `roomApiUrl` to a shared room endpoint and do not use `local`.
 
 ## Notification email webhook
 
