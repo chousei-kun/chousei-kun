@@ -806,31 +806,71 @@ dialog::backdrop {
   }
 
   .sidebar {
-    position: sticky;
-    top: 0;
+    position: static;
     z-index: 5;
-    flex-direction: row;
-    align-items: center;
+    gap: 16px;
+    padding: 16px;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
 
+  .brand {
+    align-items: flex-start;
+  }
+
+  .brand h1 {
+    font-size: 18px;
+  }
+
   .nav-list {
-    grid-auto-flow: column;
-    margin-left: auto;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .nav-item {
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .nav-item span:last-child,
+  .status-panel .ghost-button span:last-child {
+    display: inline;
   }
 
   .status-panel {
-    display: none;
+    display: grid;
+    margin-top: 0;
   }
 
   .workspace {
-    padding: 18px;
+    gap: 16px;
+    padding: 16px;
   }
 
   .topbar {
     align-items: flex-start;
     flex-direction: column;
+    gap: 12px;
+  }
+
+  .topbar h2 {
+    font-size: 28px;
+  }
+
+  .topbar-actions {
+    width: 100%;
+  }
+
+  .topbar-actions .icon-button {
+    flex: 0 0 42px;
+  }
+
+  .topbar-actions .primary-button {
+    flex: 1 1 auto;
   }
 
   .grid-layout,
@@ -841,7 +881,8 @@ dialog::backdrop {
   }
 
   .day-row {
-    grid-template-columns: 58px 1fr;
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .person-availability {
@@ -850,5 +891,154 @@ dialog::backdrop {
 
   .person-availability-row {
     grid-template-columns: 1fr;
+  }
+
+  .invite-banner,
+  .section-head,
+  .panel-title,
+  .suggestion-head,
+  .modal-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .invite-banner .primary-button,
+  .section-head .primary-button,
+  .modal-actions .primary-button,
+  .modal-actions .ghost-button,
+  .share-box .ghost-button,
+  .create-event-button {
+    width: 100%;
+  }
+
+  .segmented {
+    grid-template-columns: 1fr;
+  }
+
+  .segment {
+    min-height: 42px;
+  }
+
+  .control-panel,
+  .timeline-panel,
+  .suggestions-panel,
+  .person-card,
+  .permission-card,
+  .modal {
+    padding: 14px;
+  }
+
+  .timeline {
+    margin-top: 14px;
+    max-height: none;
+    overflow: visible;
+    gap: 12px;
+    padding-right: 0;
+  }
+
+  .timeline-summary {
+    position: static;
+  }
+
+  .day-card {
+    padding: 10px;
+  }
+
+  .person-availability {
+    gap: 10px;
+  }
+
+  .person-availability-name span {
+    white-space: normal;
+  }
+
+  .suggestion-card {
+    gap: 12px;
+  }
+
+  .score {
+    align-self: flex-start;
+  }
+
+  .share-box {
+    padding: 10px;
+  }
+
+  .share-box input {
+    font-size: 16px;
+  }
+
+  dialog {
+    width: min(100vw, 100%);
+    max-width: none;
+    margin: auto 0 0;
+    border-radius: 16px 16px 0 0;
+  }
+}
+
+@media (max-width: 560px) {
+  .sidebar {
+    padding: 14px;
+  }
+
+  .brand {
+    gap: 10px;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+  }
+
+  .workspace {
+    padding: 14px;
+  }
+
+  .topbar h2 {
+    font-size: 24px;
+    line-height: 1.15;
+  }
+
+  .nav-item {
+    gap: 6px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .nav-item span:first-child {
+    font-size: 14px;
+  }
+
+  .status-panel {
+    padding: 12px;
+  }
+
+  .panel-title {
+    gap: 10px;
+  }
+
+  .pill {
+    min-height: 26px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .bar {
+    height: 46px;
+  }
+
+  .time-tick {
+    font-size: 9px;
+  }
+
+  .calendar-row {
+    gap: 8px;
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .modal {
+    gap: 14px;
+    padding: 14px;
   }
 }
