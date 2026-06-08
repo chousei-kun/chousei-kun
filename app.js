@@ -126,13 +126,14 @@ const formatDate = (dateText) => {
 
 const overlaps = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 
-function normalizedDurationMinutes() {
+function normalizedDurationMinutes({ commit = false } = {}) {
   const input = document.querySelector("#duration");
-  const fallback = 30;
   const parsed = Number(input.value);
-  const nextValue = Number.isFinite(parsed) ? parsed : fallback;
-  const normalized = Math.min(480, Math.max(15, Math.round(nextValue / 5) * 5));
-  if (String(normalized) !== input.value) {
+  if (!input.value.trim() || !Number.isFinite(parsed)) {
+    return null;
+  }
+  const normalized = Math.min(480, Math.max(1, Math.round(parsed)));
+  if (commit && String(normalized) !== input.value) {
     input.value = String(normalized);
   }
   return normalized;
@@ -234,6 +235,7 @@ function generateSuggestions() {
   if (!people.length) return [];
 
   const duration = normalizedDurationMinutes();
+  if (!duration) return [];
   const count = Number(document.querySelector("#candidateCount").value);
   const workStart = minuteOfDay(document.querySelector("#workStart").value);
   const workEnd = minuteOfDay(document.querySelector("#workEnd").value);
@@ -336,7 +338,6 @@ function renderTimeline() {
 
 function renderSuggestions() {
   const suggestions = document.querySelector("#suggestions");
-  const candidates = generateSuggestions();
   if (!people.length) {
     suggestions.innerHTML = `
       <article class="suggestion-card empty-state">
@@ -346,6 +347,19 @@ function renderSuggestions() {
     `;
     return;
   }
+
+  const duration = normalizedDurationMinutes();
+  if (!duration) {
+    suggestions.innerHTML = `
+      <article class="suggestion-card empty-state">
+        <strong>所要時間を入力してください</strong>
+        <span>1分単位で自由に入力できます。数字を入れると候補を計算します。</span>
+      </article>
+    `;
+    return;
+  }
+
+  const candidates = generateSuggestions();
 
   if (!candidates.length) {
     suggestions.innerHTML = `
@@ -921,6 +935,11 @@ document.querySelectorAll(".segment").forEach((button) => {
 
 ["duration", "candidateCount", "workStart", "workEnd", "bufferToggle", "hideOwnerToggle"].forEach((id) => {
   document.querySelector(`#${id}`).addEventListener("input", updateAll);
+});
+
+document.querySelector("#duration").addEventListener("blur", () => {
+  normalizedDurationMinutes({ commit: true });
+  updateAll();
 });
 
 document.querySelector("#googleClientId").addEventListener("input", refreshShareUrl);
