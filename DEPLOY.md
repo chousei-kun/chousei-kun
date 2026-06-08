@@ -38,7 +38,7 @@ The workflow file lives at:
 1. Enable Google Calendar API
 2. Create an OAuth client of type `Web application`
 3. Add the GitHub Pages origin to `Authorized JavaScript origins`
-4. Put the OAuth Client ID into `config.js`
+4. Put the OAuth Client ID into `config.js` so the app can load it without showing it in the UI
 
 Use this origin for the current repository setup:
 

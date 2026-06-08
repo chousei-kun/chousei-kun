@@ -66,9 +66,7 @@ const localRoomStorageKey = `chousei-kun.room.${roomId}`;
 const preferredAccountSnapshotKey = "chousei-kun.preferred-account-snapshot";
 
 if (!state.hostKey) {
-  if (isInviteLink) {
-    state.hostKey = "";
-  } else if (hostKeyFromUrl) {
+  if (hostKeyFromUrl) {
     state.hostKey = hostKeyFromUrl;
   } else if (storedHostKey) {
     state.hostKey = storedHostKey;
@@ -79,22 +77,15 @@ if (!state.hostKey) {
   }
 }
 
-if (state.hostKey && !isInviteLink) {
+if (state.hostKey) {
   localStorage.setItem(hostKeyStorageKey, state.hostKey);
 }
 
-const storedClientId = localStorage.getItem("slotwise.googleClientId");
-if (configuredGoogleClientId) {
-  document.querySelector("#googleClientId").value = configuredGoogleClientId;
-  document.querySelector("#clientIdField").hidden = true;
-} else if (storedClientId) {
-  document.querySelector("#googleClientId").value = storedClientId;
-}
 document.querySelector("#currentOrigin").textContent = window.location.origin;
 document.querySelector("#inviteBanner").hidden = !isInviteLink;
 
 function currentGoogleClientId() {
-  return configuredGoogleClientId || state.roomGoogleClientId || document.querySelector("#googleClientId").value.trim();
+  return configuredGoogleClientId || state.roomGoogleClientId || "";
 }
 
 function currentPreferredGoogleAccount() {
@@ -110,13 +101,102 @@ function updateConnectionUi() {
   const status = document.querySelector("#oauthStatus");
 
   if (state.connected) {
-    button.innerHTML = '<span aria-hidden="true">✓</span><span>Google接続済み</span>';
-    status.textContent = state.rememberedPreferredAccount ? "接続済み(復元)" : "接続済み";
-    return;
+    button.innerHTML = '<span aria-hidden="true">✓</span><span>Google連携済み</span>';
+    status.textContent = state.rememberedPreferredAccount ? "連携済み（再開）" : "連携済み";
+  } else {
+    button.innerHTML = '<span aria-hidden="true">＋</span><span>カレンダー連携</span>';
+    status.textContent = "未連携";
   }
 
-  button.innerHTML = '<span aria-hidden="true">◌</span><span>カレンダー連携</span>';
-  status.textContent = "未接続";
+  updateHostUi();
+}
+
+function updateHostUi() {
+  const hostStatus = document.querySelector("#hostStatus");
+  const hostButtonLabel = document.querySelector("#becomeHostButton span:last-child");
+
+  if (hostStatus) {
+    hostStatus.textContent = state.hostKey ? "ホスト中" : "未設定";
+  }
+
+  if (hostButtonLabel) {
+    hostButtonLabel.textContent = state.hostKey ? "ホスト設定" : "ホストになる";
+  }
+}
+
+function persistHostKey(hostKey) {
+  state.hostKey = hostKey || "";
+  if (state.hostKey) {
+    localStorage.setItem(hostKeyStorageKey, state.hostKey);
+  } else {
+    localStorage.removeItem(hostKeyStorageKey);
+  }
+  updateHostUi();
+}
+
+function resetGoogleConnectionState() {
+  state.connected = false;
+  state.accessToken = "";
+  state.currentGoogleUser = null;
+  state.googleCalendars = [];
+  state.selectedCalendarIds = new Set();
+  state.rememberedPreferredAccount = false;
+  localStorage.removeItem(preferredAccountSnapshotKey);
+  updateConnectionUi();
+  updateAll();
+}
+
+async function claimHostRole() {
+  const hostKey = state.hostKey || crypto.randomUUID();
+  persistHostKey(hostKey);
+
+  try {
+    await roomRequest({
+      method: "POST",
+      body: JSON.stringify({
+        action: "setHost",
+        hostKey
+      })
+    });
+    await loadRoomParticipants({ quiet: true });
+    setImportStatus("ホスト権限を有効にしました");
+  } catch (error) {
+    setImportStatus(`ホスト権限の設定に失敗しました: ${error.message}`, "error");
+  }
+}
+
+async function disconnectGoogleConnection() {
+  const participantId = state.currentGoogleUser ? participantIdForProfile(state.currentGoogleUser) : "";
+  const token = state.accessToken;
+
+  if (token && window.google?.accounts?.oauth2?.revoke) {
+    await new Promise((resolve) => {
+      window.google.accounts.oauth2.revoke(token, () => resolve());
+    }).catch(() => {});
+  }
+
+  if (participantId) {
+    const removedIndex = people.findIndex((person) => person.id === participantId);
+    if (removedIndex >= 0) {
+      people.splice(removedIndex, 1);
+    }
+    try {
+      await roomRequest({
+        method: "POST",
+        body: JSON.stringify({
+          action: "removeParticipant",
+          removeParticipantId: participantId,
+          hostKey: state.hostKey
+        })
+      });
+    } catch {
+      // Local state still clears even if the room update fails.
+    }
+  }
+
+  resetGoogleConnectionState();
+  updateAll();
+  setImportStatus("Google 連携を解除しました");
 }
 
 function persistPreferredAccountSnapshot(participant) {
@@ -146,7 +226,7 @@ function restorePreferredAccountSnapshot() {
     state.connected = true;
     state.rememberedPreferredAccount = true;
     updateConnectionUi();
-    setImportStatus("前回の連携状態を復元しました。最新同期や予定作成時に必要なら再認証します。");
+    setImportStatus("以前の連携状態を復元しました。新しい候補を再読み込みしています。");
   } catch {
     // Ignore broken local snapshots.
   }
@@ -168,20 +248,13 @@ function renderShareModeNote() {
   const note = document.querySelector("#shareModeNote");
   if (!note) return;
   note.textContent = prefersLocalRoomStore
-    ? "GitHub Pages 版では共有ルームはこのブラウザ内に保存されます。複数人の自動集約を戻すには別の保存先が必要です。"
-    : "共有URLから参加できます。Google連携すると参加者と空き状況が自動で集まります。";
+    ? "GitHub Pages ではルーム情報をこのブラウザ内に保存します。複数人の自由な共有を見るには、通常の保存方式を使ってください。"
+    : "URL から読み込めます。Google 連携をすると自由に予定を作れます。";
 }
 
 refreshShareUrl();
 renderShareModeNote();
 updateConnectionUi();
-if (isInviteLink) {
-  document.querySelector("#clientIdField").hidden = true;
-  const note = document.querySelector(".client-id-note");
-  if (note) note.hidden = true;
-  const originBox = document.querySelector(".origin-box");
-  if (originBox) originBox.hidden = true;
-}
 
 const minuteOfDay = (time) => {
   const [hour, minute] = time.split(":").map(Number);
@@ -201,7 +274,7 @@ const formatDate = (dateText) => {
 
 const formatCandidateMessageDate = (dateText) => {
   const date = new Date(`${dateText}T00:00:00+09:00`);
-  return `${date.getMonth() + 1}月${date.getDate()}日（${weekdays[date.getDay()]}）`;
+  return `${date.getMonth() + 1}/${date.getDate()}(${weekdays[date.getDay()]})`;
 };
 
 const candidateKey = (candidate) => `${candidate.dateText}-${candidate.start}-${candidate.end}`;
@@ -257,7 +330,7 @@ function renderParticipantNameControl(person) {
   if (!canEditParticipant(person)) {
     return `
       <div class="name-editor readonly">
-        <span>参加者名</span>
+        <span>蜿ょ刈閠・錐</span>
         <div class="readonly-name">${escapeHtml(person.name)}</div>
       </div>
     `;
@@ -265,7 +338,7 @@ function renderParticipantNameControl(person) {
 
   return `
     <label class="name-editor">
-      <span>参加者名</span>
+      <span>蜿ょ刈閠・錐</span>
       <input
         class="name-input"
         type="text"
@@ -320,7 +393,7 @@ function renderCandidateMessage(candidates = []) {
   }
 
   textarea.value = selected.map((candidate, index) => {
-    const marker = ["①", "②", "③", "④", "⑤", "⑥", "⑦", "⑧"][index] || `${index + 1}.`;
+    const marker = ["竭", "竭｡", "竭｢", "竭｣", "竭､", "竭･", "竭ｦ", "竭ｧ"][index] || `${index + 1}.`;
     return `${marker}${formatCandidateMessageDate(candidate.dateText)} ${timeFromMinute(candidate.start)}~`;
   }).join("\n");
 }
@@ -337,8 +410,40 @@ async function localRoomRequest(options = {}) {
   }
 
   const body = JSON.parse(options.body || "{}");
+  const action = String(body.action || "");
   const participant = body.participant && typeof body.participant === "object" ? body.participant : null;
   const googleClientId = sanitizeGoogleClientIdClient(body.googleClientId);
+  const nextHostKey = String(body.hostKey || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+  const removeParticipantId = body.removeParticipantId ? String(body.removeParticipantId).slice(0, 160) : "";
+
+  if (action === "setHost") {
+    if (!nextHostKey) throw new Error("hostKey is required");
+    const nextRoom = {
+      roomId,
+      hostKey: nextHostKey,
+      googleClientId: current.googleClientId || googleClientId || "",
+      participants: Array.isArray(current.participants) ? current.participants : [],
+      updatedAt: new Date().toISOString()
+    };
+    writeLocalRoom(nextRoom);
+    return presentLocalRoom(nextRoom);
+  }
+
+  if (action === "removeParticipant") {
+    if (!removeParticipantId) throw new Error("removeParticipantId is required");
+    const nextRoom = {
+      roomId,
+      hostKey: current.hostKey || nextHostKey || "",
+      googleClientId: current.googleClientId || googleClientId || "",
+      participants: (Array.isArray(current.participants) ? current.participants : []).filter(
+        (item) => item.id !== removeParticipantId
+      ),
+      updatedAt: new Date().toISOString()
+    };
+    writeLocalRoom(nextRoom);
+    return presentLocalRoom(nextRoom);
+  }
+
 
   if (!participant && !googleClientId) {
     throw new Error("valid participant or googleClientId is required");
@@ -370,7 +475,7 @@ async function notifyNewParticipantConnection(participant) {
   try {
     const payload = JSON.stringify({
       type: "participant_connected",
-      app: "調整くん",
+      app: "隱ｿ謨ｴ縺上ｓ",
       roomId,
       participant: {
         id: participant.id,
@@ -435,31 +540,31 @@ function scoreSlot(dateText, start, duration, meetingType) {
 
   if (hour >= 10 && hour <= 11) {
     score += 8;
-    reasons.push("午前の承認率が高い");
+    reasons.push("午前に近い時間");
   }
 
   if (hour === 12 || hour === 13) {
     score -= 14;
-    reasons.push("昼休み付近");
+    reasons.push("昼休みの時間帯");
   }
 
   if (meetingType === "onsite") {
     score -= hour < 11 ? 2 : 0;
-    reasons.push("移動余白を考慮");
+    reasons.push("対面向けの調整");
   }
 
   if (duration <= 30) {
     score += 5;
-    reasons.push("短時間で確定しやすい");
+    reasons.push("短時間で調整しやすい");
   }
 
   if (date.getDay() === 0 || date.getDay() === 6) {
     score -= 20;
-    reasons.push("週末候補");
+    reasons.push("週末は優先度を下げる");
   }
 
   if (!reasons.length) {
-    reasons.push("全員の予定と衝突なし");
+    reasons.push("全体のバランスがよい");
   }
 
   return {
@@ -500,7 +605,7 @@ function renderTimeline() {
   const workEnd = minuteOfDay(document.querySelector("#workEnd").value);
   const span = workEnd - workStart;
   const hideOwner = document.querySelector("#hideOwnerToggle").checked;
-  document.querySelector("#privacyBadge").textContent = hideOwner ? "詳細非表示" : "担当者表示";
+  document.querySelector("#privacyBadge").textContent = hideOwner ? "隧ｳ邏ｰ髱櫁｡ｨ遉ｺ" : "諡・ｽ楢・｡ｨ遉ｺ";
 
   const ticks = [];
   for (let minute = workStart; minute <= workEnd; minute += 120) {
@@ -527,7 +632,7 @@ function renderTimeline() {
     const hasBusy = (person.busy[dateText] || []).some(([start, end]) =>
       overlaps(workStart, workEnd, minuteOfDay(start), minuteOfDay(end))
     );
-    return hasBusy ? "一部予定あり" : "終日空き";
+    return hasBusy ? "予定あり" : "空きあり";
   };
 
   const rows = dates.slice(0, timelinePreviewDays).map((dateText) => {
@@ -561,14 +666,14 @@ function renderTimeline() {
           </div>
         </div>
         <div class="person-availability">
-          ${peopleRows || '<div class="empty-state timeline-empty">参加者が接続するとユーザー別の空き状況を表示します。</div>'}
+          ${peopleRows || '<div class="empty-state timeline-empty">蜿ょ刈閠・′謗･邯壹☆繧九→繝ｦ繝ｼ繧ｶ繝ｼ蛻･縺ｮ遨ｺ縺咲憾豕√ｒ陦ｨ遉ｺ縺励∪縺吶・/div>'}
         </div>
       </div>
     `;
   }).join("");
 
   timeline.innerHTML = `
-    <div class="timeline-summary">候補検索: ${formatDate(dates[0])} - ${formatDate(dates[dates.length - 1])} / 表示: 先頭${timelinePreviewDays}日</div>
+    <div class="timeline-summary">蛟呵｣懈､懃ｴ｢: ${formatDate(dates[0])} - ${formatDate(dates[dates.length - 1])} / 陦ｨ遉ｺ: 蜈磯ｭ${timelinePreviewDays}譌･</div>
     ${rows}
   `;
 }
@@ -578,8 +683,8 @@ function renderSuggestions() {
   if (!people.length) {
     suggestions.innerHTML = `
       <article class="suggestion-card empty-state">
-        <strong>Google カレンダーを接続してください</strong>
-        <span>参加者が追加されると、2カ月先までの空き候補を生成します。</span>
+        <strong>Google 繧ｫ繝ｬ繝ｳ繝繝ｼ繧呈磁邯壹＠縺ｦ縺上□縺輔＞</strong>
+        <span>蜿ょ刈閠・′霑ｽ蜉縺輔ｌ繧九→縲・繧ｫ譛亥・縺ｾ縺ｧ縺ｮ遨ｺ縺榊呵｣懊ｒ逕滓・縺励∪縺吶・/span>
       </article>
     `;
     renderCandidateMessage([]);
@@ -590,8 +695,8 @@ function renderSuggestions() {
   if (!duration) {
     suggestions.innerHTML = `
       <article class="suggestion-card empty-state">
-        <strong>所要時間を入力してください</strong>
-        <span>1分単位で自由に入力できます。数字を入れると候補を計算します。</span>
+        <strong>謇隕∵凾髢薙ｒ蜈･蜉帙＠縺ｦ縺上□縺輔＞</strong>
+        <span>1蛻・腰菴阪〒閾ｪ逕ｱ縺ｫ蜈･蜉帙〒縺阪∪縺吶よ焚蟄励ｒ蜈･繧後ｋ縺ｨ蛟呵｣懊ｒ險育ｮ励＠縺ｾ縺吶・/span>
       </article>
     `;
     renderCandidateMessage([]);
@@ -607,8 +712,8 @@ function renderSuggestions() {
   if (!candidates.length) {
     suggestions.innerHTML = `
       <article class="suggestion-card empty-state">
-        <strong>候補が見つかりません</strong>
-        <span>業務時間、所要時間、前後バッファを調整してください。</span>
+        <strong>蛟呵｣懊′隕九▽縺九ｊ縺ｾ縺帙ｓ</strong>
+        <span>讌ｭ蜍呎凾髢薙∵園隕∵凾髢薙∝燕蠕後ヰ繝・ヵ繧｡繧定ｪｿ謨ｴ縺励※縺上□縺輔＞縲・/span>
       </article>
     `;
     renderCandidateMessage([]);
@@ -628,10 +733,10 @@ function renderSuggestions() {
         ${candidate.reasons.map((reason) => `<span class="reason">${reason}</span>`).join("")}
       </div>
       <button class="ghost-button select-candidate-button" type="button" data-key="${candidateKey(candidate)}">
-        <span aria-hidden="true">${state.selectedCandidateKeys.has(candidateKey(candidate)) ? "✓" : "○"}</span><span>${state.selectedCandidateKeys.has(candidateKey(candidate)) ? "選択中" : "候補に入れる"}</span>
+        <span aria-hidden="true">${state.selectedCandidateKeys.has(candidateKey(candidate)) ? "✓" : "＋"}</span><span>${state.selectedCandidateKeys.has(candidateKey(candidate)) ? "選択中" : "候補に追加"}</span>
       </button>
       <button class="primary-button create-event-button" type="button" data-date="${candidate.dateText}" data-start="${candidate.start}" data-end="${candidate.end}">
-        <span aria-hidden="true">＋</span><span>予定作成</span>
+        <span aria-hidden="true">＋</span><span>予定を作成</span>
       </button>
     </article>
   `).join("");
@@ -661,8 +766,8 @@ function renderPeople() {
   if (!people.length) {
     peopleList.innerHTML = `
       <article class="person-card empty-state">
-        <strong>参加者はまだいません</strong>
-        <span>各ユーザーが Google で許可すると、ここに参加者として追加されます。</span>
+        <strong>蜿ょ刈閠・・縺ｾ縺縺・∪縺帙ｓ</strong>
+        <span>蜷・Θ繝ｼ繧ｶ繝ｼ縺・Google 縺ｧ險ｱ蜿ｯ縺吶ｋ縺ｨ縲√％縺薙↓蜿ょ刈閠・→縺励※霑ｽ蜉縺輔ｌ縺ｾ縺吶・/span>
       </article>
     `;
     return;
@@ -674,14 +779,14 @@ function renderPeople() {
           <div class="avatar">${person.initials}</div>
           <div>
             <strong>${escapeHtml(person.name)}</strong>
-            <div class="pill secure">Google接続済み</div>
+            <div class="pill secure">Google謗･邯壽ｸ医∩</div>
           </div>
         </div>
       ${renderParticipantNameControl(person)}
       <p class="person-meta">${
         canEditParticipant(person)
-          ? "表示名は自由に変更できます。Gmail アドレスは他の参加者には表示されません。"
-          : "この参加者の表示名は編集できません。Gmail アドレスは他の参加者には表示されません。"
+          ? "名前はその場で編集できます。メールアドレスは他の参加者には表示されません。"
+          : "この参加者の名前は編集できません。メールアドレスは他の参加者には表示されません。"
       }</p>
     </article>
   `).join("");
@@ -734,7 +839,7 @@ async function saveParticipantName(input) {
   if (!participant) return;
   if (!canEditParticipant(participant)) {
     input.value = previousName;
-    setImportStatus("招待側では他の参加者名は編集できません", "error");
+    setImportStatus("諡帛ｾ・・縺ｧ縺ｯ莉悶・蜿ょ刈閠・錐縺ｯ邱ｨ髮・〒縺阪∪縺帙ｓ", "error");
     return;
   }
 
@@ -750,7 +855,7 @@ async function saveParticipantName(input) {
 
   try {
     await publishParticipantToRoom(updatedParticipant);
-    setImportStatus(`${nextName} の表示名を更新しました`);
+    setImportStatus(`${nextName} 縺ｮ陦ｨ遉ｺ蜷阪ｒ譖ｴ譁ｰ縺励∪縺励◆`);
   } catch (error) {
     upsertParticipant({
       ...participant,
@@ -759,7 +864,7 @@ async function saveParticipantName(input) {
       customName: participant.customName ?? false
     });
     updateAll();
-    setImportStatus(`表示名の保存に失敗しました: ${error.message}`, "error");
+    setImportStatus(`陦ｨ遉ｺ蜷阪・菫晏ｭ倥↓螟ｱ謨励＠縺ｾ縺励◆: ${error.message}`, "error");
   }
 }
 
@@ -807,22 +912,18 @@ async function loadRoomParticipants({ quiet = false } = {}) {
     const room = await roomRequest();
     if (room.googleClientId && !configuredGoogleClientId) {
       state.roomGoogleClientId = room.googleClientId;
-      document.querySelector("#googleClientId").value = room.googleClientId;
-      if (isInviteLink) {
-        document.querySelector("#clientIdField").hidden = true;
-      }
     }
     (room.participants || []).forEach(upsertParticipant);
     if (room.updatedAt && room.updatedAt !== state.lastRoomSync) {
       state.lastRoomSync = room.updatedAt;
       updateAll();
       if (!quiet) {
-        setImportStatus(`${room.participants?.length || 0}人の参加者をルームから読み込みました`);
+        setImportStatus(`${room.participants?.length || 0}莠ｺ縺ｮ蜿ょ刈閠・ｒ繝ｫ繝ｼ繝縺九ｉ隱ｭ縺ｿ霎ｼ縺ｿ縺ｾ縺励◆`);
       }
     }
   } catch (error) {
     if (!quiet) {
-      setImportStatus(`ルーム同期に失敗しました: ${error.message}`, "error");
+      setImportStatus(`繝ｫ繝ｼ繝蜷梧悄縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ${error.message}`, "error");
     }
   }
 }
@@ -837,7 +938,6 @@ async function publishParticipantToRoom(participant) {
   });
   if (room.googleClientId && !configuredGoogleClientId) {
     state.roomGoogleClientId = room.googleClientId;
-    document.querySelector("#googleClientId").value = room.googleClientId;
   }
   state.lastRoomSync = room.updatedAt || "";
   (room.participants || []).forEach(upsertParticipant);
@@ -855,15 +955,12 @@ async function syncRoomGoogleClientId({ quiet = true } = {}) {
       body: JSON.stringify({ googleClientId })
     });
     state.roomGoogleClientId = room.googleClientId || googleClientId;
-    if (!configuredGoogleClientId) {
-      document.querySelector("#googleClientId").value = state.roomGoogleClientId;
-    }
     if (!quiet) {
-      setImportStatus("Google OAuth Client ID を招待ルームへ保存しました");
+      setImportStatus("Google 連携設定を更新しました");
     }
   } catch (error) {
     if (!quiet) {
-      setImportStatus(`Google OAuth Client ID の保存に失敗しました: ${error.message}`, "error");
+      setImportStatus(`Google 連携設定の更新に失敗しました: ${error.message}`, "error");
     }
   }
 }
@@ -880,12 +977,12 @@ function setImportStatus(message, tone = "neutral") {
 function googleAuthErrorMessage(error) {
   const type = error?.type || "unknown";
   if (type === "popup_closed") {
-    return `認可ポップアップが完了前に閉じました。Google Cloud Console の origin/test user/API 設定を確認してください。現在の origin: ${window.location.origin}`;
+    return `Google の認可ポップアップが閉じられました。Cloud Console の origin / test user / API 設定を確認してください。現在の origin: ${window.location.origin}`;
   }
   if (type === "popup_failed_to_open") {
-    return "認可ポップアップを開けませんでした。ブラウザのポップアップブロックを許可してください。";
+    return "Google の認可画面を開けませんでした。ブラウザのポップアップブロックを確認してください。";
   }
-  return `Google 認可が完了しませんでした: ${type}`;
+  return `Google 認可に失敗しました: ${type}`;
 }
 
 function renderCalendarSelection() {
@@ -905,7 +1002,7 @@ function renderCalendarSelection() {
         } />
       </label>
     `).join("")
-    : '<div class="field-note">Google連携後にカレンダー候補が表示されます。</div>';
+    : '<div class="field-note">Google騾｣謳ｺ蠕後↓繧ｫ繝ｬ繝ｳ繝繝ｼ蛟呵｣懊′陦ｨ遉ｺ縺輔ｌ縺ｾ縺吶・/div>';
 
   containers.forEach((container) => {
     container.innerHTML = markup;
@@ -954,7 +1051,7 @@ function localDateTime(dateText, minutes) {
 
 function eventDescription() {
   return [
-    "Slotwise で作成",
+    "Slotwise 縺ｧ菴懈・",
     `Room: ${roomId}`,
     `Participants: ${people.map((person) => person.name).join(", ")}`
   ].join("\n");
@@ -985,7 +1082,7 @@ function targetCalendarId() {
 
 async function createCalendarEventFromCandidate(button) {
   if (!state.accessToken || !state.currentGoogleUser) {
-    setImportStatus("予定作成には Google 接続が必要です", "error");
+    setImportStatus("予定を作成するには Google 連携が必要です", "error");
     document.querySelector("#connectDialog").showModal();
     return;
   }
@@ -997,7 +1094,7 @@ async function createCalendarEventFromCandidate(button) {
   const calendarId = targetCalendarId();
 
   button.disabled = true;
-  button.querySelector("span:last-child").textContent = "作成中";
+  button.querySelector("span:last-child").textContent = "菴懈・荳ｭ";
 
   try {
     const event = await googleRequest(
@@ -1020,13 +1117,13 @@ async function createCalendarEventFromCandidate(button) {
         })
       }
     );
-    setImportStatus(`予定を作成しました: ${event.htmlLink || title}`);
-    button.querySelector("span:last-child").textContent = "作成済み";
+    setImportStatus(`莠亥ｮ壹ｒ菴懈・縺励∪縺励◆: ${event.htmlLink || title}`);
+    button.querySelector("span:last-child").textContent = "菴懈・貂医∩";
     await importGoogleFreeBusy();
   } catch (error) {
     button.disabled = false;
-    button.querySelector("span:last-child").textContent = "予定作成";
-    setImportStatus(`予定作成に失敗しました: ${error.message}`, "error");
+    button.querySelector("span:last-child").textContent = "莠亥ｮ壻ｽ懈・";
+    setImportStatus(`莠亥ｮ壻ｽ懈・縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ${error.message}`, "error");
   }
 }
 
@@ -1076,11 +1173,11 @@ async function importGoogleFreeBusy() {
   if (!state.accessToken || !state.currentGoogleUser) return;
   const selectedIds = [...state.selectedCalendarIds];
   if (!selectedIds.length) {
-    setImportStatus("読み込むカレンダーを1つ以上選んでください", "error");
+    setImportStatus("隱ｭ縺ｿ霎ｼ繧繧ｫ繝ｬ繝ｳ繝繝ｼ繧・縺､莉･荳企∈繧薙〒縺上□縺輔＞", "error");
     return;
   }
 
-  setImportStatus("2カ月分の freeBusy を読み込み中...");
+  setImportStatus("2繧ｫ譛亥・縺ｮ freeBusy 繧定ｪｭ縺ｿ霎ｼ縺ｿ荳ｭ...");
   const timeMin = `${dates[0]}T00:00:00+09:00`;
   const timeMax = `${dates[dates.length - 1]}T23:59:59+09:00`;
   const freeBusy = await googleRequest("https://www.googleapis.com/calendar/v3/freeBusy", {
@@ -1124,9 +1221,9 @@ async function importGoogleFreeBusy() {
     if (isNewParticipant) {
       await notifyNewParticipantConnection(connectedPerson);
     }
-    setImportStatus(`${connectedPerson.name} をルームへ共有しました。現在 ${room.participants?.length || 1}人が参加中です`);
+    setImportStatus(`${connectedPerson.name} をルームに共有しました。現在 ${room.participants?.length || 1} 人が参加中です。`);
   } catch (error) {
-    setImportStatus(`${connectedPerson.name} の free/busy は読み込み済みですが、ルーム共有に失敗しました: ${error.message}`, "error");
+    setImportStatus(`${connectedPerson.name} の free/busy は読み込めましたが、ルーム共有に失敗しました: ${error.message}`, "error");
   }
   updateAll();
 }
@@ -1134,18 +1231,15 @@ async function importGoogleFreeBusy() {
 function requestGoogleCalendarAccess() {
   const clientId = currentGoogleClientId();
   if (!clientId) {
-    setImportStatus("Google OAuth Client ID がまだルームに登録されていません。主催者が先に Google 連携すると、そのまま参加できます。", "error");
+    setImportStatus("Google OAuth Client ID が設定されていません。先に管理側で設定してください。", "error");
     return;
   }
 
   if (!window.google?.accounts?.oauth2) {
-    setImportStatus("Google 認証ライブラリを読み込み中です。数秒後にもう一度押してください。", "error");
+    setImportStatus("Google 認証ライブラリを読み込めませんでした。ページを再読み込みしてください。", "error");
     return;
   }
 
-  if (!configuredGoogleClientId) {
-    localStorage.setItem("slotwise.googleClientId", clientId);
-  }
   refreshShareUrl();
   setImportStatus("Google の認可画面を開いています...");
 
@@ -1168,20 +1262,20 @@ function requestGoogleCalendarAccess() {
             (state.currentGoogleUser?.email || "").toLowerCase() !== currentPreferredGoogleAccount()
           ) {
             const approved = window.confirm(
-              `${state.currentGoogleUser?.email || "このアカウント"} で連携しますか？\n\n${currentPreferredGoogleAccount()} 以外のアカウントは毎回確認が入ります。`
+              `${state.currentGoogleUser?.email || "このアカウント"} で連携しますか？\n${currentPreferredGoogleAccount()} 以外のアカウントは優先連携の対象ではありません。`
             );
             if (!approved) {
               state.accessToken = "";
               state.currentGoogleUser = null;
-              setImportStatus("別アカウントでの連携をキャンセルしました");
+              setImportStatus("別のアカウントでの連携をキャンセルしました");
               return;
             }
           }
           const calendars = await fetchGoogleCalendars();
           await importGoogleFreeBusy();
-        setImportStatus(`${state.currentGoogleUser.name || state.currentGoogleUser.email} と ${calendars.length}件のカレンダーを接続しました`);
+        setImportStatus(`${state.currentGoogleUser.name || state.currentGoogleUser.email} 縺ｨ ${calendars.length}莉ｶ縺ｮ繧ｫ繝ｬ繝ｳ繝繝ｼ繧呈磁邯壹＠縺ｾ縺励◆`);
       } catch (error) {
-        setImportStatus(`Google Calendar の読み込みに失敗しました: ${error.message}`, "error");
+        setImportStatus(`Google Calendar 縺ｮ隱ｭ縺ｿ霎ｼ縺ｿ縺ｫ螟ｱ謨励＠縺ｾ縺励◆: ${error.message}`, "error");
       }
     },
     error_callback: (error) => {
@@ -1195,10 +1289,10 @@ function requestGoogleCalendarAccess() {
 function renderAuditLog() {
   const auditLog = document.querySelector("#auditLog");
   const entries = [
-    ["calendar.calendarlist.readonly", "カレンダー選択"],
-    ["calendar.freebusy", "空き/埋まり判定"],
-    ["calendar.events", "選択候補の予定作成"],
-    ["openid email profile", "参加者名の識別"],
+    ["calendar.calendarlist.readonly", "カレンダー一覧を読む"],
+    ["calendar.freebusy", "空き時間を読む"],
+    ["calendar.events", "予定を作成する"],
+    ["openid email profile", "参加者名と本人確認"],
     ["events.readonly", "未使用"],
   ];
   auditLog.innerHTML = entries.map(([scope, purpose]) => `
@@ -1243,12 +1337,6 @@ document.querySelector("#duration").addEventListener("blur", () => {
   updateAll();
 });
 
-document.querySelector("#googleClientId").addEventListener("input", refreshShareUrl);
-document.querySelector("#googleClientId").addEventListener("change", () => {
-  refreshShareUrl();
-  syncRoomGoogleClientId();
-});
-
 document.querySelector("#suggestButton").addEventListener("click", renderSuggestions);
 
 document.querySelector("#copyShareUrlButton").addEventListener("click", async () => {
@@ -1256,31 +1344,31 @@ document.querySelector("#copyShareUrlButton").addEventListener("click", async ()
   await syncRoomGoogleClientId();
   try {
     await navigator.clipboard.writeText(shareUrl);
-    document.querySelector("#copyShareUrlButton span:last-child").textContent = "コピー済み";
+    document.querySelector("#copyShareUrlButton span:last-child").textContent = "コピー完了";
   } catch {
     document.querySelector("#shareUrl").select();
-    setImportStatus("共有URLを選択しました。コピーしてください。");
+    setImportStatus("共有 URL を選択しました。コピーしてお使いください。");
   }
 });
 
 document.querySelector("#copyCandidateMessageButton").addEventListener("click", async () => {
   const message = document.querySelector("#candidateMessage").value.trim();
   if (!message) {
-    setImportStatus("先に候補日を選んでください", "error");
+    setImportStatus("先に候補を選んでください", "error");
     return;
   }
   try {
     await navigator.clipboard.writeText(message);
-    setImportStatus("候補文面をコピーしました");
+    setImportStatus("候補メッセージをコピーしました");
   } catch {
     document.querySelector("#candidateMessage").select();
-    setImportStatus("候補文面を選択しました。コピーしてください。");
+    setImportStatus("候補メッセージを選択しました。コピーしてお使いください。");
   }
 });
 
 document.querySelector("#relearnButton").addEventListener("click", () => {
   state.learnedAt = new Date();
-  document.querySelector("#learningState").textContent = "更新済み";
+  document.querySelector("#learningState").textContent = "譖ｴ譁ｰ貂医∩";
   people.forEach((person) => {
     person.preference.morning += Math.round(Math.random() * 2);
     person.preference.afternoon += Math.round(Math.random() * 2);
@@ -1302,6 +1390,10 @@ document.querySelector("#editCalendarsButton").addEventListener("click", () => {
   document.querySelector("#connectDialog").showModal();
 });
 
+document.querySelector("#becomeHostButton").addEventListener("click", claimHostRole);
+
+document.querySelector("#disconnectButton").addEventListener("click", disconnectGoogleConnection);
+
 document.querySelector("#inviteConnectButton").addEventListener("click", () => {
   document.querySelector("#connectDialog").showModal();
   requestGoogleCalendarAccess();
@@ -1318,3 +1410,4 @@ if (isInviteLink) {
 loadRoomParticipants({ quiet: true });
 setInterval(() => loadRoomParticipants({ quiet: true }), 10000);
 updateAll();
+

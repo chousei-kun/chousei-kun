@@ -228,6 +228,11 @@ button {
   color: var(--ink);
 }
 
+.ghost-button.danger {
+  border-color: rgba(233, 135, 112, 0.35);
+  color: #a94531;
+}
+
 .icon-button {
   display: grid;
   width: 42px;

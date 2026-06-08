@@ -22,6 +22,10 @@ function sanitizeGoogleClientId(clientId) {
   return /^[a-zA-Z0-9-]+\.apps\.googleusercontent\.com$/.test(value) ? value.slice(0, 200) : "";
 }
 
+function sanitizeHostKey(hostKey) {
+  return String(hostKey || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80);
+}
+
 function sanitizeParticipant(participant) {
   if (!participant || typeof participant !== "object") return null;
   if (!participant.id || !participant.name || !participant.busy) return null;
@@ -66,7 +70,7 @@ function presentRoom(room, hostKey) {
 export default async (request) => {
   const url = new URL(request.url);
   const roomId = url.searchParams.get("room");
-  const hostKey = url.searchParams.get("host") || "";
+  const hostKey = sanitizeHostKey(url.searchParams.get("host"));
   if (!roomId) return json(400, { error: "room is required" });
 
   const store = getStore("slotwise-rooms");
@@ -82,8 +86,39 @@ export default async (request) => {
   }
 
   const body = await request.json().catch(() => null);
+  const action = String(body?.action || "");
   const participant = sanitizeParticipant(body?.participant);
   const googleClientId = sanitizeGoogleClientId(body?.googleClientId);
+  const nextHostKey = sanitizeHostKey(body?.hostKey);
+  const removeParticipantId = body?.removeParticipantId ? String(body.removeParticipantId).slice(0, 160) : "";
+  if (action === "setHost") {
+    if (!nextHostKey) return json(400, { error: "hostKey is required" });
+    const next = {
+      roomId,
+      hostKey: nextHostKey,
+      googleClientId: current.googleClientId || googleClientId || "",
+      participants: Array.isArray(current.participants) ? current.participants : [],
+      updatedAt: new Date().toISOString()
+    };
+    await store.setJSON(key, next);
+    return json(200, presentRoom(next, nextHostKey));
+  }
+
+  if (action === "removeParticipant") {
+    if (!removeParticipantId) return json(400, { error: "removeParticipantId is required" });
+    const next = {
+      roomId,
+      hostKey: current.hostKey || nextHostKey || "",
+      googleClientId: current.googleClientId || googleClientId || "",
+      participants: (Array.isArray(current.participants) ? current.participants : []).filter(
+        (item) => item.id !== removeParticipantId
+      ),
+      updatedAt: new Date().toISOString()
+    };
+    await store.setJSON(key, next);
+    return json(200, presentRoom(next, nextHostKey));
+  }
+
   if (!participant && !googleClientId) {
     return json(400, { error: "valid participant or googleClientId is required" });
   }
